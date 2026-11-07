@@ -155,23 +155,23 @@ export const validateUrl = (url, fieldName = 'URL', required = false) => {
 
 export const StudentRegistrationSchema = z.object({
   name: z.string().trim().min(2, 'Name must contain between 2 and 60 characters.').max(60, 'Name must contain between 2 and 60 characters.'),
-  email: z.string().trim().max(60, 'Email cannot exceed 60 characters.').regex(EMAIL_PATTERN, 'Please enter a valid email address.'),
+  email: z.string().trim().email('Please enter a valid email address.').max(60, 'Email cannot exceed 60 characters.'),
   password: z.string().min(8, 'Password must be between 8 and 128 characters.').max(128, 'Password must be between 8 and 128 characters.'),
   studentId: z.string().trim().max(50, 'Student ID cannot exceed 50 characters.').optional().default(''),
   department: z.string().trim().max(100, 'Department cannot exceed 100 characters.').optional().default('General Engineering'),
   graduationYear: z.number().int().min(2000, 'Invalid graduation year.').max(2100, 'Invalid graduation year.').optional().default(2026),
-  phone: z.string().trim().max(10, 'Phone number must be strictly 10 digits.').refine((v) => !v || /^\d{10}$/.test(v), 'Phone number must be strictly 10 digits.').optional().default(''),
+  phone: z.string().trim().length(10, 'Phone number must be strictly 10 digits.').regex(/^\d{10}$/, 'Phone number must be strictly 10 digits.').optional().or(z.literal('')),
   interests: z.array(z.string().trim().max(50)).max(20).optional().default([]),
 });
 
 export const OrganizerRegistrationSchema = z.object({
   name: z.string().trim().min(2, 'Name must contain between 2 and 60 characters.').max(60, 'Name must contain between 2 and 60 characters.'),
-  email: z.string().trim().max(60, 'Email cannot exceed 60 characters.').regex(EMAIL_PATTERN, 'Please enter a valid email address.'),
+  email: z.string().trim().email('Please enter a valid email address.').max(60, 'Email cannot exceed 60 characters.'),
   password: z.string().min(8, 'Password must be between 8 and 128 characters.').max(128, 'Password must be between 8 and 128 characters.'),
   organizationName: z.string().trim().min(2, 'Organization name must be between 2 and 150 characters.').max(150, 'Organization name must be between 2 and 150 characters.'),
   department: z.string().trim().max(100, 'Department cannot exceed 100 characters.').optional().default('Campus Wide'),
   employeeId: z.string().trim().max(50, 'Employee ID cannot exceed 50 characters.').optional().default(''),
-  phone: z.string().trim().max(10, 'Phone number must be strictly 10 digits.').refine((v) => !v || /^\d{10}$/.test(v), 'Phone number must be strictly 10 digits.').optional().default(''),
+  phone: z.string().trim().length(10, 'Phone number must be strictly 10 digits.').regex(/^\d{10}$/, 'Phone number must be strictly 10 digits.').optional().or(z.literal('')),
 });
 
 export const EventSchema = z.object({
