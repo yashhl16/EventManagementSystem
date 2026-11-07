@@ -102,6 +102,7 @@ export const StudentLoginPage: React.FC = () => {
                 <input
                   type="email"
                   required
+                  maxLength={60}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="student@college.edu"

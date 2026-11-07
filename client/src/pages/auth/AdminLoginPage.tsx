@@ -125,6 +125,7 @@ export const AdminLoginPage: React.FC = () => {
                 <input
                   type="email"
                   required
+                  maxLength={60}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@college.edu"

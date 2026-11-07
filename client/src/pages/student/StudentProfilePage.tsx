@@ -178,7 +178,7 @@ export const StudentProfilePage: React.FC = () => {
               <input
                 type="text"
                 required
-                maxLength={100}
+                maxLength={60}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
@@ -218,10 +218,10 @@ export const StudentProfilePage: React.FC = () => {
               </label>
               <input
                 type="tel"
-                maxLength={25}
+                maxLength={10}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 9876543210"
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder="9876543210"
                 className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
               />
             </div>

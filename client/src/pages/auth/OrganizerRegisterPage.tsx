@@ -143,7 +143,7 @@ export const OrganizerRegisterPage: React.FC = () => {
                 <input
                   type="text"
                   required
-                  maxLength={100}
+                  maxLength={60}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Dr. Sarah Mitchell"
@@ -180,7 +180,7 @@ export const OrganizerRegisterPage: React.FC = () => {
                   <input
                     type="email"
                     required
-                    maxLength={254}
+                    maxLength={60}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="club@college.edu"
@@ -230,10 +230,10 @@ export const OrganizerRegisterPage: React.FC = () => {
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     type="tel"
-                    maxLength={25}
+                    maxLength={10}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 9876543210"
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="9876543210"
                     className="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2.5 pl-10 pr-3.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800/60 dark:text-white dark:focus:bg-slate-900"
                   />
                 </div>

@@ -2,8 +2,8 @@
 
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY,
-  name VARCHAR(150) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
+  name VARCHAR(60) NOT NULL,
+  email VARCHAR(60) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'organizer', 'admin')) DEFAULT 'student',
   student_id VARCHAR(50) DEFAULT '',
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   admin_id VARCHAR(50) DEFAULT '',
   department VARCHAR(100) DEFAULT 'General',
   graduation_year INT DEFAULT 2026,
-  phone VARCHAR(30) DEFAULT '',
+  phone VARCHAR(10) DEFAULT '',
   avatar TEXT DEFAULT 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
   bio TEXT DEFAULT '',
   interests JSONB DEFAULT '["Technology", "Hackathons", "Workshops"]'::jsonb,

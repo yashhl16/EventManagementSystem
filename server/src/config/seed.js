@@ -34,7 +34,7 @@ export const ensureDemoAccounts = async () => {
         adminHash,
         process.env.ADMIN_ID || 'ADM-2026-001',
         'Campus Administration',
-        '+1 (555) 019-2834',
+        '9876543210',
         'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300',
         'Oversees campus technical councils, student organization approvals, and inter-collegiate event compliance.',
       ]
@@ -70,7 +70,7 @@ export const ensureDemoAccounts = async () => {
         'CS-2024-0042',
         'Computer Science & Engineering',
         2026,
-        '+1 (555) 432-1098',
+        '9876543211',
         'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=300',
         '3rd year CS undergrad. Full-stack enthusiast, hackathon addict, and cloud architect aspirant.',
         JSON.stringify(['Hackathons', 'Artificial Intelligence', 'Web Development', 'Robotics']),
@@ -107,7 +107,7 @@ export const ensureDemoAccounts = async () => {
         'FAC-ENG-402',
         'Computer Science & Engineering',
         'ACM Student Chapter & Coding Club',
-        '+1 (555) 345-6789',
+        '9876543212',
         'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300',
         'Faculty advisor for ACM Chapter. Passionate about hackathons, competitive programming, and AI research.',
       ]

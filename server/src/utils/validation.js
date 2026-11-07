@@ -20,15 +20,15 @@ export const URL_PATTERN = /^https?:\/\/[^\s$.?#].[^\s]*$/i;
 
 /**
  * Validate personal name fields (Student name, Organizer name, Admin name)
- * Range: 2 to 100 characters. Supports Unicode, spaces, hyphens, apostrophes.
+ * Range: 2 to 60 characters. Supports Unicode, spaces, hyphens, apostrophes.
  */
 export const validateName = (name, fieldName = 'Full name') => {
   if (name === undefined || name === null || typeof name !== 'string') {
     return { isValid: false, message: `${fieldName} is required.` };
   }
   const trimmed = name.trim();
-  if (trimmed.length < 2 || trimmed.length > 100) {
-    return { isValid: false, message: `${fieldName} must be between 2 and 100 characters.` };
+  if (trimmed.length < 2 || trimmed.length > 60) {
+    return { isValid: false, message: `${fieldName} must be between 2 and 60 characters.` };
   }
   if (/[\u0000-\u001F\u007F<>]/.test(name)) {
     return { isValid: false, message: `${fieldName} contains invalid characters or markup.` };
@@ -41,7 +41,7 @@ export const validateName = (name, fieldName = 'Full name') => {
 
 /**
  * Validate email address
- * Max length: 254 characters. Normalized to lowercase.
+ * Max length: 60 characters. Normalized to lowercase.
  */
 export const validateEmail = (email) => {
   if (email === undefined || email === null || typeof email !== 'string') {
@@ -51,8 +51,8 @@ export const validateEmail = (email) => {
   if (!trimmed) {
     return { isValid: false, message: 'Email address is required.' };
   }
-  if (trimmed.length > 254) {
-    return { isValid: false, message: 'Email address cannot exceed 254 characters.' };
+  if (trimmed.length > 60) {
+    return { isValid: false, message: 'Email address cannot exceed 60 characters.' };
   }
   if (!EMAIL_PATTERN.test(trimmed)) {
     return { isValid: false, message: 'Please enter a valid college email address.' };
@@ -90,7 +90,7 @@ export const validatePassword = (password, isNew = true) => {
 
 /**
  * Validate and normalize mobile / phone number
- * Between 10 and 15 digits (E.164). Validates Indian numbering rules when applicable.
+ * Strictly 10 digits (VARCHAR(10)). Validates Indian numbering rules when applicable.
  */
 export const validatePhone = (phone, required = false) => {
   if (phone === undefined || phone === null || typeof phone !== 'string' || !phone.trim()) {
@@ -100,29 +100,13 @@ export const validatePhone = (phone, required = false) => {
     return { isValid: true, value: '' };
   }
   const raw = phone.trim();
-  if (!PHONE_CHAR_PATTERN.test(raw)) {
-    return { isValid: false, message: 'Enter a valid mobile number (allowed: digits, spaces, hyphens, +, parentheses).' };
+  if (!/^\d{10}$/.test(raw)) {
+    return { isValid: false, message: 'Mobile number must be strictly 10 digits.' };
   }
-  const hasPlus = raw.startsWith('+');
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length < 10 || digits.length > 15) {
-    return { isValid: false, message: 'Mobile number must contain between 10 and 15 digits.' };
+  if (!/^[6-9]/.test(raw)) {
+    return { isValid: false, message: '10-digit mobile number must start with 6, 7, 8, or 9.' };
   }
-
-  // Indian mobile validation rules & international number support
-  if (raw.startsWith('+91') || (digits.length === 12 && digits.startsWith('91'))) {
-    const mobileDigits = digits.length === 12 ? digits.slice(2) : digits;
-    if (!/^[6-9]/.test(mobileDigits)) {
-      return { isValid: false, message: 'Indian mobile numbers (+91) must be 10 digits starting with 6, 7, 8, or 9.' };
-    }
-  } else if (digits.length === 10 && !raw.includes('(') && !raw.includes(')')) {
-    if (!/^[6-9]/.test(digits)) {
-      return { isValid: false, message: '10-digit Indian mobile numbers must start with 6, 7, 8, or 9.' };
-    }
-  }
-
-  const normalized = hasPlus ? `+${digits}` : digits;
-  return { isValid: true, value: normalized };
+  return { isValid: true, value: raw };
 };
 
 /**
@@ -170,24 +154,24 @@ export const validateUrl = (url, fieldName = 'URL', required = false) => {
 /* ================= ZOD SCHEMAS FOR STRICT COMPOSITE VALIDATION ================= */
 
 export const StudentRegistrationSchema = z.object({
-  name: z.string().trim().min(2, 'Name must contain between 2 and 100 characters.').max(100, 'Name must contain between 2 and 100 characters.'),
-  email: z.string().trim().max(254, 'Email cannot exceed 254 characters.').regex(EMAIL_PATTERN, 'Please enter a valid email address.'),
+  name: z.string().trim().min(2, 'Name must contain between 2 and 60 characters.').max(60, 'Name must contain between 2 and 60 characters.'),
+  email: z.string().trim().max(60, 'Email cannot exceed 60 characters.').regex(EMAIL_PATTERN, 'Please enter a valid email address.'),
   password: z.string().min(8, 'Password must be between 8 and 128 characters.').max(128, 'Password must be between 8 and 128 characters.'),
   studentId: z.string().trim().max(50, 'Student ID cannot exceed 50 characters.').optional().default(''),
   department: z.string().trim().max(100, 'Department cannot exceed 100 characters.').optional().default('General Engineering'),
   graduationYear: z.number().int().min(2000, 'Invalid graduation year.').max(2100, 'Invalid graduation year.').optional().default(2026),
-  phone: z.string().trim().max(25, 'Phone number cannot exceed 25 characters.').optional().default(''),
+  phone: z.string().trim().max(10, 'Phone number must be strictly 10 digits.').refine((v) => !v || /^\d{10}$/.test(v), 'Phone number must be strictly 10 digits.').optional().default(''),
   interests: z.array(z.string().trim().max(50)).max(20).optional().default([]),
 });
 
 export const OrganizerRegistrationSchema = z.object({
-  name: z.string().trim().min(2, 'Name must contain between 2 and 100 characters.').max(100, 'Name must contain between 2 and 100 characters.'),
-  email: z.string().trim().max(254, 'Email cannot exceed 254 characters.').regex(EMAIL_PATTERN, 'Please enter a valid email address.'),
+  name: z.string().trim().min(2, 'Name must contain between 2 and 60 characters.').max(60, 'Name must contain between 2 and 60 characters.'),
+  email: z.string().trim().max(60, 'Email cannot exceed 60 characters.').regex(EMAIL_PATTERN, 'Please enter a valid email address.'),
   password: z.string().min(8, 'Password must be between 8 and 128 characters.').max(128, 'Password must be between 8 and 128 characters.'),
   organizationName: z.string().trim().min(2, 'Organization name must be between 2 and 150 characters.').max(150, 'Organization name must be between 2 and 150 characters.'),
   department: z.string().trim().max(100, 'Department cannot exceed 100 characters.').optional().default('Campus Wide'),
   employeeId: z.string().trim().max(50, 'Employee ID cannot exceed 50 characters.').optional().default(''),
-  phone: z.string().trim().max(25, 'Phone number cannot exceed 25 characters.').optional().default(''),
+  phone: z.string().trim().max(10, 'Phone number must be strictly 10 digits.').refine((v) => !v || /^\d{10}$/.test(v), 'Phone number must be strictly 10 digits.').optional().default(''),
 });
 
 export const EventSchema = z.object({

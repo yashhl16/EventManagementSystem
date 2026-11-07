@@ -168,7 +168,7 @@ async function runTests() {
         studentId: 'STU-ELENA-2026',
         department: 'Computer Science & Engineering',
         graduationYear: 2027,
-        phone: '+1-555-019-9000',
+        phone: '9876543210',
         interests: ['Artificial Intelligence', 'Hackathons'],
       }),
     });
@@ -424,12 +424,12 @@ async function runTests() {
         name: "José Nuñez-O'Connor",
         email: `jose.valid.${Date.now()}@college.edu`,
         password: 'ValidPassword123!',
-        phone: '+91 9876543210',
+        phone: '9876543210',
         studentId: 'STU-VALID-01',
         department: 'Computer Science',
       }),
     });
-    assert(validStudentRes.status === 201, 'Test Case 1: Valid registration with Unicode name and +91 phone returns 201 Created');
+    assert(validStudentRes.status === 201, 'Test Case 1: Valid registration with Unicode name and 10-digit phone returns 201 Created');
 
     // TEST CASE 2: Short name (< 2 chars)
     const shortNameRes = await fetch(`${BASE_URL}/auth/student/register`, {
@@ -443,17 +443,17 @@ async function runTests() {
     });
     assert(shortNameRes.status === 400, 'Test Case 2: Short name (< 2 chars) rejected with 400 Bad Request');
 
-    // TEST CASE 3: Long name (> 100 chars)
+    // TEST CASE 3: Long name (> 60 chars)
     const longNameRes = await fetch(`${BASE_URL}/auth/student/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: 'A'.repeat(101),
+        name: 'A'.repeat(61),
         email: `longname.${Date.now()}@college.edu`,
         password: 'ValidPassword123!',
       }),
     });
-    assert(longNameRes.status === 400, 'Test Case 3: Long name (> 100 chars) rejected with 400 Bad Request');
+    assert(longNameRes.status === 400, 'Test Case 3: Long name (> 60 chars) rejected with 400 Bad Request');
 
     // TEST CASE 4: Name with script tags / HTML
     const xssNameRes = await fetch(`${BASE_URL}/auth/student/register`, {
@@ -479,17 +479,17 @@ async function runTests() {
     });
     assert(invalidEmailRes.status === 400, 'Test Case 5: Invalid email format rejected with 400 Bad Request');
 
-    // TEST CASE 6: Email > 254 chars
+    // TEST CASE 6: Email > 60 chars
     const longEmailRes = await fetch(`${BASE_URL}/auth/student/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'John Doe',
-        email: 'a'.repeat(245) + '@college.edu',
+        email: 'a'.repeat(50) + '@college.edu',
         password: 'ValidPassword123!',
       }),
     });
-    assert(longEmailRes.status === 400, 'Test Case 6: Email > 254 chars rejected with 400 Bad Request');
+    assert(longEmailRes.status === 400, 'Test Case 6: Email > 60 chars rejected with 400 Bad Request');
 
     // TEST CASE 6b: Missing or empty password rejected with "Password is required."
     const emptyPwdRes1 = await fetch(`${BASE_URL}/auth/student/register`, {
@@ -594,20 +594,20 @@ async function runTests() {
     });
     assert(longPwdRes.status === 400, 'Test Case 8: Password > 128 chars rejected with 400 Bad Request');
 
-    // TEST CASE 9: Invalid phone (letters, <10 digits, >15 digits, invalid Indian mobile prefix)
-    const invalidPhonePrefixRes = await fetch(`${BASE_URL}/auth/student/register`, {
+    // TEST CASE 9: Invalid phone (not strictly 10 digits or invalid prefix)
+    const invalidPhoneRes = await fetch(`${BASE_URL}/auth/student/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'John Doe',
         email: `invphone.${Date.now()}@college.edu`,
         password: 'ValidPassword123!',
-        phone: '+91 4123456789', // Invalid prefix 4
+        phone: '12345', // Not 10 digits
       }),
     });
-    assert(invalidPhonePrefixRes.status === 400, 'Test Case 9: Invalid Indian phone prefix rejected with 400 Bad Request');
+    assert(invalidPhoneRes.status === 400, 'Test Case 9: Phone number not strictly 10 digits rejected with 400 Bad Request');
 
-    // TEST CASE 10: Valid phone formats (e.g. +91 9876543210, 9876543210, (555) 123-4567)
+    // TEST CASE 10: Valid 10-digit phone numbers accepted
     const validPhone1Res = await fetch(`${BASE_URL}/auth/student/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -625,10 +625,10 @@ async function runTests() {
         name: 'Sarah Connor II',
         email: `phone2.${Date.now()}@college.edu`,
         password: 'ValidPassword123!',
-        phone: '(555) 123-4567',
+        phone: '8765432109',
       }),
     });
-    assert(validPhone1Res.status === 201 && validPhone2Res.status === 201, 'Test Case 10: Valid standard & international phone formats accepted with 201 Created');
+    assert(validPhone1Res.status === 201 && validPhone2Res.status === 201, 'Test Case 10: Valid 10-digit phone numbers accepted with 201 Created');
 
     // TEST CASE 11: Event creation with description > 5000 chars
     const longDescEventRes = await fetch(`${BASE_URL}/admin/events`, {

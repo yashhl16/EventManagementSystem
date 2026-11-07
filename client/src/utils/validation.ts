@@ -20,8 +20,8 @@ export const validateName = (name: string, fieldName = 'Full name'): ValidationR
     return { isValid: false, message: `${fieldName} is required.` };
   }
   const trimmed = name.trim();
-  if (trimmed.length < 2 || trimmed.length > 100) {
-    return { isValid: false, message: `${fieldName} must contain between 2 and 100 characters.` };
+  if (trimmed.length < 2 || trimmed.length > 60) {
+    return { isValid: false, message: `${fieldName} must contain between 2 and 60 characters.` };
   }
   if (/[\u0000-\u001F\u007F<>]/.test(name)) {
     return { isValid: false, message: `${fieldName} cannot contain HTML or control characters.` };
@@ -37,8 +37,8 @@ export const validateEmail = (email: string): ValidationResult => {
     return { isValid: false, message: 'Email address is required.' };
   }
   const trimmed = email.trim();
-  if (trimmed.length > 254) {
-    return { isValid: false, message: 'Email address cannot exceed 254 characters.' };
+  if (trimmed.length > 60) {
+    return { isValid: false, message: 'Email address cannot exceed 60 characters.' };
   }
   if (!EMAIL_PATTERN.test(trimmed)) {
     return { isValid: false, message: 'Please enter a valid email address.' };
@@ -71,25 +71,13 @@ export const validatePhone = (phone: string, required = false): ValidationResult
     return { isValid: true, normalized: '' };
   }
   const raw = phone.trim();
-  if (!PHONE_CHAR_PATTERN.test(raw)) {
-    return { isValid: false, message: 'Enter a valid mobile number.' };
+  if (!/^\d{10}$/.test(raw)) {
+    return { isValid: false, message: 'Mobile number must be strictly 10 digits.' };
   }
-  const hasPlus = raw.startsWith('+');
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length < 10 || digits.length > 15) {
-    return { isValid: false, message: 'Mobile number must contain between 10 and 15 digits.' };
+  if (!/^[6-9]/.test(raw)) {
+    return { isValid: false, message: '10-digit mobile number must start with 6, 7, 8, or 9.' };
   }
-  if (raw.startsWith('+91') || (digits.length === 12 && digits.startsWith('91'))) {
-    const mobileDigits = digits.length === 12 ? digits.slice(2) : digits;
-    if (!/^[6-9]/.test(mobileDigits)) {
-      return { isValid: false, message: 'Indian mobile numbers (+91) must be 10 digits starting with 6, 7, 8, or 9.' };
-    }
-  } else if (digits.length === 10 && !raw.includes('(') && !raw.includes(')')) {
-    if (!/^[6-9]/.test(digits)) {
-      return { isValid: false, message: '10-digit Indian mobile numbers must start with 6, 7, 8, or 9.' };
-    }
-  }
-  return { isValid: true, normalized: hasPlus ? `+${digits}` : digits };
+  return { isValid: true, normalized: raw };
 };
 
 export const validateText = (

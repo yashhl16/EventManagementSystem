@@ -280,6 +280,7 @@ export const AdminUsersPage: React.FC = () => {
                 <input
                   type="text"
                   required
+                  maxLength={60}
                   value={adminName}
                   onChange={(e) => setAdminName(e.target.value)}
                   placeholder="e.g. Vice Chancellor Dr. Arthur Pendelton"
@@ -294,6 +295,7 @@ export const AdminUsersPage: React.FC = () => {
                 <input
                   type="email"
                   required
+                  maxLength={60}
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="dean@college.edu"
