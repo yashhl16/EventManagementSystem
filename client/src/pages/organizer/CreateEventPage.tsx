@@ -14,7 +14,12 @@ import {
 } from 'lucide-react';
 import { eventService } from '../../services/api';
 import { Button } from '../../components/common/Button';
-import { validateText, validateUrl } from '../../utils/validation';
+import {
+  validateText,
+  validateUrl,
+  getMinEventDate,
+  validateEventSchedule,
+} from '../../utils/validation';
 
 const CATEGORIES = [
   'Technical',
@@ -58,8 +63,8 @@ export const CreateEventPage: React.FC = () => {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [bannerImage, setBannerImage] = useState(PRESET_BANNERS[0].url);
   const [eventDate, setEventDate] = useState('');
-  const [startTime, setStartTime] = useState('10:00 AM');
-  const [endTime, setEndTime] = useState('04:00 PM');
+  const [startTime, setStartTime] = useState('10:00');
+  const [endTime, setEndTime] = useState('16:00');
   const [venue, setVenue] = useState('Main Auditorium');
   const [venueType, setVenueType] = useState<'offline' | 'online' | 'hybrid'>('offline');
   const [meetingUrl, setMeetingUrl] = useState('');
@@ -76,10 +81,55 @@ export const CreateEventPage: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [scheduleErrors, setScheduleErrors] = useState<{
+    eventDate?: string;
+    startTime?: string;
+    endTime?: string;
+  }>({});
+
+  const handleDateChange = (newDate: string) => {
+    const minDate = getMinEventDate();
+    const newErrors = { ...scheduleErrors };
+    delete newErrors.eventDate;
+
+    if (newDate && newDate < minDate) {
+      newErrors.eventDate = 'Previous dates cannot be selected. Earliest permitted date is tomorrow.';
+    }
+
+    setEventDate(newDate);
+    setScheduleErrors(newErrors);
+  };
+
+  const handleStartTimeChange = (newStartTime: string) => {
+    const newErrors = { ...scheduleErrors };
+    delete newErrors.startTime;
+
+    if (newStartTime && endTime && endTime <= newStartTime) {
+      newErrors.endTime = 'Event end time must be later than event start time.';
+    } else {
+      delete newErrors.endTime;
+    }
+
+    setStartTime(newStartTime);
+    setScheduleErrors(newErrors);
+  };
+
+  const handleEndTimeChange = (newEndTime: string) => {
+    const newErrors = { ...scheduleErrors };
+    delete newErrors.endTime;
+
+    if (startTime && newEndTime && newEndTime <= startTime) {
+      newErrors.endTime = 'Event end time must be later than event start time.';
+    }
+
+    setEndTime(newEndTime);
+    setScheduleErrors(newErrors);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setScheduleErrors({});
 
     const titleCheck = validateText(title, 'Event title', 3, 150, true);
     if (!titleCheck.isValid) {
@@ -90,6 +140,20 @@ export const CreateEventPage: React.FC = () => {
     const descCheck = validateText(description, 'Event description', 10, 5000, true);
     if (!descCheck.isValid) {
       setErrorMessage(descCheck.message);
+      return;
+    }
+
+    // Validate date and time ordering
+    const scheduleCheck = validateEventSchedule(eventDate, startTime, endTime);
+    if (!scheduleCheck.isValid) {
+      setErrorMessage(scheduleCheck.message);
+      if (scheduleCheck.message.includes('date')) {
+        setScheduleErrors((prev) => ({ ...prev, eventDate: scheduleCheck.message }));
+      } else if (scheduleCheck.message.includes('start time')) {
+        setScheduleErrors((prev) => ({ ...prev, startTime: scheduleCheck.message }));
+      } else if (scheduleCheck.message.includes('end time')) {
+        setScheduleErrors((prev) => ({ ...prev, endTime: scheduleCheck.message }));
+      }
       return;
     }
 
@@ -295,6 +359,12 @@ export const CreateEventPage: React.FC = () => {
             Schedule & Location
           </h2>
 
+          {/* Advance Schedule Notice */}
+          <div className="flex items-center gap-2 rounded-xl bg-indigo-50/80 p-3 text-xs text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border dark:border-indigo-800/40">
+            <Clock className="h-4 w-4 shrink-0 text-indigo-500" />
+            <span>The earliest selectable event date is tomorrow ({getMinEventDate()}). Yesterday and today are disabled.</span>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -303,10 +373,16 @@ export const CreateEventPage: React.FC = () => {
               <input
                 type="date"
                 required
+                min={getMinEventDate()}
                 value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                onChange={(e) => handleDateChange(e.target.value)}
+                className={`mt-1.5 w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:bg-slate-800 dark:text-white ${
+                  scheduleErrors.eventDate ? 'border-rose-500 bg-rose-50/40' : 'border-slate-200 dark:border-slate-800'
+                }`}
               />
+              {scheduleErrors.eventDate && (
+                <p className="mt-1 text-[11px] text-rose-500 font-medium">{scheduleErrors.eventDate}</p>
+              )}
             </div>
 
             <div>
@@ -314,13 +390,17 @@ export const CreateEventPage: React.FC = () => {
                 Start Time *
               </label>
               <input
-                type="text"
+                type="time"
                 required
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                placeholder="10:00 AM"
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                onChange={(e) => handleStartTimeChange(e.target.value)}
+                className={`mt-1.5 w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:bg-slate-800 dark:text-white ${
+                  scheduleErrors.startTime ? 'border-rose-500 bg-rose-50/40' : 'border-slate-200 dark:border-slate-800'
+                }`}
               />
+              {scheduleErrors.startTime && (
+                <p className="mt-1 text-[11px] text-rose-500 font-medium">{scheduleErrors.startTime}</p>
+              )}
             </div>
 
             <div>
@@ -328,13 +408,18 @@ export const CreateEventPage: React.FC = () => {
                 End Time *
               </label>
               <input
-                type="text"
+                type="time"
                 required
+                min={startTime || undefined}
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                placeholder="04:00 PM"
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                onChange={(e) => handleEndTimeChange(e.target.value)}
+                className={`mt-1.5 w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:bg-slate-800 dark:text-white ${
+                  scheduleErrors.endTime ? 'border-rose-500 bg-rose-50/40' : 'border-slate-200 dark:border-slate-800'
+                }`}
               />
+              {scheduleErrors.endTime && (
+                <p className="mt-1 text-[11px] text-rose-500 font-medium">{scheduleErrors.endTime}</p>
+              )}
             </div>
           </div>
 

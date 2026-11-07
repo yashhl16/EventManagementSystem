@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { query, mapEvent } from '../config/db.js';
-import { validateText, validateUrl } from '../utils/validation.js';
+import { validateText, validateUrl, validateEventSchedule } from '../utils/validation.js';
 
 /**
  * Get Public Campus Statistics for Landing Page & Overview
@@ -277,6 +277,11 @@ export const createEvent = async (req, res) => {
       });
     }
 
+    const scheduleCheck = validateEventSchedule(eventDate, startTime, endTime, true);
+    if (!scheduleCheck.isValid) {
+      return res.status(400).json({ success: false, message: scheduleCheck.message });
+    }
+
     const titleCheck = validateText(title, 'Event title', 3, 150, true);
     if (!titleCheck.isValid) {
       return res.status(400).json({ success: false, message: titleCheck.message });
@@ -424,6 +429,18 @@ export const updateEvent = async (req, res) => {
     if (title !== undefined) {
       const titleCheck = validateText(title, 'Event title', 3, 150, true);
       if (!titleCheck.isValid) return res.status(400).json({ success: false, message: titleCheck.message });
+    }
+
+    if (eventDate !== undefined || startTime !== undefined || endTime !== undefined) {
+      const existingEvt = checkRes.rows[0];
+      const targetDate = eventDate !== undefined ? eventDate : (existingEvt.event_date ? (existingEvt.event_date.toISOString ? existingEvt.event_date.toISOString().split('T')[0] : String(existingEvt.event_date).split('T')[0]) : '');
+      const targetStart = startTime !== undefined ? startTime : existingEvt.start_time;
+      const targetEnd = endTime !== undefined ? endTime : existingEvt.end_time;
+
+      const scheduleCheck = validateEventSchedule(targetDate, targetStart, targetEnd, false);
+      if (!scheduleCheck.isValid) {
+        return res.status(400).json({ success: false, message: scheduleCheck.message });
+      }
     }
 
     if (description !== undefined) {

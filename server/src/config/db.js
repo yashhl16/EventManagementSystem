@@ -221,6 +221,8 @@ export const initSchema = async () => {
       `ALTER TABLE events ADD CONSTRAINT chk_events_title_len CHECK (length(trim(title)) >= 3 AND length(title) <= 150);`,
       `ALTER TABLE events ADD CONSTRAINT chk_events_desc_len CHECK (length(description) <= 5000);`,
       `ALTER TABLE events ADD CONSTRAINT chk_events_venue_len CHECK (length(venue) <= 200);`,
+      `ALTER TABLE events ADD CONSTRAINT chk_events_start_time_len CHECK (start_time IS NULL OR (length(start_time) >= 1 AND length(start_time) <= 50));`,
+      `ALTER TABLE events ADD CONSTRAINT chk_events_end_time_len CHECK (end_time IS NULL OR (length(end_time) >= 1 AND length(end_time) <= 50));`,
       `ALTER TABLE announcements ADD CONSTRAINT chk_announcements_title_len CHECK (length(trim(title)) >= 3 AND length(trim(title)) <= 200);`,
       `ALTER TABLE announcements ADD CONSTRAINT chk_announcements_msg_len CHECK (length(message) <= 2000);`,
       `ALTER TABLE event_registrations ADD CONSTRAINT chk_registrations_team_name CHECK (team_name IS NULL OR length(team_name) <= 100);`,
@@ -296,6 +298,20 @@ export const connectDB = async () => {
       console.log('[DB] DATABASE_URL not set in local dev environment. Initializing local pg-mem PostgreSQL engine...');
       const { newDb } = await import('pg-mem');
       const memDb = newDb();
+      memDb.registerExtension('uuid-ossp', (schema) => {
+        schema.registerFunction({
+          name: 'uuid_generate_v4',
+          returns: memDb.public.getType('text'),
+          implementation: () => (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : '00000000-0000-0000-0000-000000000001'),
+        });
+      });
+      memDb.registerExtension('pgcrypto', (schema) => {
+        schema.registerFunction({
+          name: 'gen_random_uuid',
+          returns: memDb.public.getType('text'),
+          implementation: () => (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : '00000000-0000-0000-0000-000000000001'),
+        });
+      });
       memDb.public.registerFunction({
         name: 'current_database',
         implementation: () => 'campus_pulse_local',

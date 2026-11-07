@@ -222,3 +222,94 @@ export const AnnouncementSchema = z.object({
 export const TeamSchema = z.object({
   teamName: z.string().trim().min(2, 'Team name must be between 2 and 100 characters.').max(100, 'Team name must be between 2 and 100 characters.'),
 });
+
+/**
+ * Parse time string (supports 12h "02:30 PM", "10:00 AM", or 24h "14:30") to minutes from midnight (0..1439).
+ */
+export const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if (!match) return null;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const modifier = match[3] ? match[3].toUpperCase() : null;
+
+  if (minutes < 0 || minutes > 59) return null;
+
+  if (modifier === 'PM' && hours < 12) hours += 12;
+  if (modifier === 'AM' && hours === 12) hours = 0;
+
+  if (hours < 0 || hours > 23) return null;
+
+  return hours * 60 + minutes;
+};
+
+/**
+ * Get current date string in Asia/Kolkata timezone (YYYY-MM-DD)
+ */
+export const getTodayIST = () => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(new Date());
+};
+
+/**
+ * Get tomorrow's date string in Asia/Kolkata timezone (YYYY-MM-DD)
+ */
+export const getTomorrowIST = () => {
+  const todayStr = getTodayIST();
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const todayDate = new Date(Date.UTC(y, m - 1, d));
+  const tomorrowDate = new Date(todayDate.getTime() + 24 * 60 * 60 * 1000);
+  return tomorrowDate.toISOString().split('T')[0];
+};
+
+/**
+ * Strict server-side date & time validation for events
+ * Enforces:
+ * 1. Valid date format (YYYY-MM-DD)
+ * 2. Date cannot be today or in the past ("Previous dates cannot be selected.")
+ * 3. Start time must be valid format
+ * 4. End time must be valid format
+ * 5. End time must be strictly later than start time ("Event end time must be later than event start time.")
+ */
+export const validateEventSchedule = (eventDate, startTime, endTime, isNew = true) => {
+  if (!eventDate || typeof eventDate !== 'string') {
+    return { isValid: false, message: 'Event date is required.' };
+  }
+  const dateStr = eventDate.includes('T') ? eventDate.split('T')[0] : eventDate.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return { isValid: false, message: 'Invalid event date format. Expected YYYY-MM-DD.' };
+  }
+
+  const todayIST = getTodayIST();
+  if (dateStr <= todayIST) {
+    return { isValid: false, message: 'Previous dates cannot be selected.' };
+  }
+
+  if (!startTime || typeof startTime !== 'string' || !startTime.trim()) {
+    return { isValid: false, message: 'Please select a valid event start time.' };
+  }
+  const startMins = parseTimeToMinutes(startTime);
+  if (startMins === null) {
+    return { isValid: false, message: 'Please select a valid event start time.' };
+  }
+
+  if (!endTime || typeof endTime !== 'string' || !endTime.trim()) {
+    return { isValid: false, message: 'Please select a valid event end time.' };
+  }
+  const endMins = parseTimeToMinutes(endTime);
+  if (endMins === null) {
+    return { isValid: false, message: 'Please select a valid event end time.' };
+  }
+
+  if (endMins <= startMins) {
+    return { isValid: false, message: 'Event end time must be later than event start time.' };
+  }
+
+  return { isValid: true, date: dateStr, startMinutes: startMins, endMinutes: endMins };
+};

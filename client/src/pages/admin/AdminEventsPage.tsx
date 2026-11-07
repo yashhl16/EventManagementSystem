@@ -27,6 +27,10 @@ import { StatCard } from '../../components/common/StatCard';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState } from '../../components/common/EmptyState';
+import {
+  getMinEventDate,
+  validateEventSchedule,
+} from '../../utils/validation';
 
 const CATEGORIES = [
   'All',
@@ -192,6 +196,51 @@ export const AdminEventsPage: React.FC = () => {
     setIsFormOpen(true);
   };
 
+  const handleDateChange = (newDate: string) => {
+    const minDate = getMinEventDate();
+    const newErrors = { ...formErrors };
+    delete newErrors.eventDate;
+
+    if (newDate && newDate < minDate) {
+      newErrors.eventDate = 'Previous dates cannot be selected. Earliest permitted date is tomorrow.';
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      eventDate: newDate,
+    }));
+    setFormErrors(newErrors);
+  };
+
+  const handleStartTimeChange = (newStartTime: string) => {
+    const newErrors = { ...formErrors };
+    delete newErrors.startTime;
+
+    if (newStartTime && formData.endTime && formData.endTime <= newStartTime) {
+      newErrors.endTime = 'Event end time must be later than event start time.';
+    } else {
+      delete newErrors.endTime;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      startTime: newStartTime,
+    }));
+    setFormErrors(newErrors);
+  };
+
+  const handleEndTimeChange = (newEndTime: string) => {
+    const newErrors = { ...formErrors };
+    delete newErrors.endTime;
+
+    if (formData.startTime && newEndTime && newEndTime <= formData.startTime) {
+      newErrors.endTime = 'Event end time must be later than event start time.';
+    }
+
+    setFormData((prev) => ({ ...prev, endTime: newEndTime }));
+    setFormErrors(newErrors);
+  };
+
   // Save Event (Create or Update)
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +257,18 @@ export const AdminEventsPage: React.FC = () => {
     if (!formData.venue.trim()) errors.venue = 'Venue location is required.';
     else if (formData.venue.trim().length > 200) errors.venue = 'Venue cannot exceed 200 characters.';
 
-    if (!formData.eventDate) errors.eventDate = 'Event date is required.';
+    if (!formData.eventDate) {
+      errors.eventDate = 'Event date is required.';
+    } else {
+      const scheduleCheck = validateEventSchedule(formData.eventDate, formData.startTime, formData.endTime);
+      if (!scheduleCheck.isValid) {
+        errors.eventDate = scheduleCheck.message || 'Invalid event schedule.';
+      }
+    }
+
+    if (formData.startTime && formData.endTime && formData.endTime <= formData.startTime) {
+      errors.endTime = 'Event end time must be later than event start time.';
+    }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -765,6 +825,12 @@ export const AdminEventsPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Advance Schedule Notice */}
+              <div className="flex items-center gap-2 rounded-xl bg-indigo-50/80 p-2.5 text-xs text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border dark:border-indigo-800/40">
+                <Clock className="h-4 w-4 shrink-0 text-indigo-500" />
+                <span>The earliest selectable event date is tomorrow ({getMinEventDate()}). Yesterday and today are disabled.</span>
+              </div>
+
               {/* Date & Times */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
@@ -773,10 +839,16 @@ export const AdminEventsPage: React.FC = () => {
                   </label>
                   <input
                     type="date"
+                    min={getMinEventDate()}
                     value={formData.eventDate}
-                    onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    onChange={(e) => handleDateChange(e.target.value)}
+                    className={`w-full rounded-xl border p-2.5 text-xs dark:bg-slate-800 dark:text-white ${
+                      formErrors.eventDate ? 'border-rose-500 bg-rose-50/40' : 'border-slate-200 dark:border-slate-700'
+                    }`}
                   />
+                  {formErrors.eventDate && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-medium">{formErrors.eventDate}</p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-300">
@@ -785,9 +857,14 @@ export const AdminEventsPage: React.FC = () => {
                   <input
                     type="time"
                     value={formData.startTime}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
+                    className={`w-full rounded-xl border p-2.5 text-xs dark:bg-slate-800 dark:text-white ${
+                      formErrors.startTime ? 'border-rose-500 bg-rose-50/40' : 'border-slate-200 dark:border-slate-700'
+                    }`}
                   />
+                  {formErrors.startTime && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-medium">{formErrors.startTime}</p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-300">
@@ -795,10 +872,16 @@ export const AdminEventsPage: React.FC = () => {
                   </label>
                   <input
                     type="time"
+                    min={formData.startTime || undefined}
                     value={formData.endTime}
-                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    onChange={(e) => handleEndTimeChange(e.target.value)}
+                    className={`w-full rounded-xl border p-2.5 text-xs dark:bg-slate-800 dark:text-white ${
+                      formErrors.endTime ? 'border-rose-500 bg-rose-50/40' : 'border-slate-200 dark:border-slate-700'
+                    }`}
                   />
+                  {formErrors.endTime && (
+                    <p className="mt-1 text-[11px] text-rose-500 font-medium">{formErrors.endTime}</p>
+                  )}
                 </div>
               </div>
 

@@ -729,6 +729,140 @@ async function runTests() {
       'Test Case 16: All three existing demo accounts (student, organizer, admin) authenticate successfully (200 OK)'
     );
 
+    // =========================================================================
+    // DATE & TIME RESTRICTION TESTS (1-DAY MINIMUM ADVANCE & TIME ORDERING)
+    // =========================================================================
+    const now = new Date();
+    const istFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const todayIST = istFormatter.format(now);
+    const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowIST = istFormatter.format(tomorrowDate);
+    const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayIST = istFormatter.format(yesterdayDate);
+    const futureDate = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+    const futureDateIST = istFormatter.format(futureDate);
+
+    // TEST CASE 17: Yesterday date must be rejected with 400 Bad Request
+    const yesterdayEventRes = await fetch(`${BASE_URL}/admin/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Past Event Test',
+        description: 'Testing that previous dates are rejected.',
+        category: 'Technical',
+        eventDate: yesterdayIST,
+        startTime: '10:00',
+        endTime: '12:00',
+        venue: 'Auditorium Hall',
+      }),
+    });
+    const yesterdayEventData = await yesterdayEventRes.json();
+    assert(
+      yesterdayEventRes.status === 400 && yesterdayEventData.message.includes('Previous dates cannot be selected'),
+      `Test Case 17: Yesterday date (${yesterdayIST}) rejected with 400 Bad Request ("${yesterdayEventData.message}")`
+    );
+
+    // TEST CASE 18: Today's date must be rejected (minimum 1 day in advance)
+    const todayEventRes = await fetch(`${BASE_URL}/admin/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Today Event Test',
+        description: 'Testing that today is rejected because 1 day advance notice is required.',
+        category: 'Workshop',
+        eventDate: todayIST,
+        startTime: '14:00',
+        endTime: '16:00',
+        venue: 'Seminar Room 1',
+      }),
+    });
+    const todayEventData = await todayEventRes.json();
+    assert(
+      todayEventRes.status === 400 && todayEventData.message.includes('Previous dates cannot be selected'),
+      `Test Case 18: Today date (${todayIST}) rejected with 400 Bad Request ("${todayEventData.message}")`
+    );
+
+    // TEST CASE 19: End time <= Start time must be rejected
+    const invalidTimeEventRes = await fetch(`${BASE_URL}/admin/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Invalid Time Event Test',
+        description: 'Testing that end time earlier than start time is rejected.',
+        category: 'Seminar',
+        eventDate: tomorrowIST,
+        startTime: '15:00',
+        endTime: '11:00',
+        venue: 'Conference Hall',
+      }),
+    });
+    const invalidTimeEventData = await invalidTimeEventRes.json();
+    assert(
+      invalidTimeEventRes.status === 400 && invalidTimeEventData.message.includes('Event end time must be later than event start time'),
+      `Test Case 19: End time (11:00) earlier than start time (15:00) rejected with 400 Bad Request ("${invalidTimeEventData.message}")`
+    );
+
+    // TEST CASE 20: Valid tomorrow schedule succeeds (Admin createEvent)
+    const tomorrowEventRes = await fetch(`${BASE_URL}/admin/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Tomorrow Valid Symposium',
+        description: 'A symposium scheduled for tomorrow, satisfying the 1 day advance rule.',
+        category: 'Conference',
+        eventDate: tomorrowIST,
+        startTime: '09:00',
+        endTime: '17:00',
+        venue: 'Main Campus Auditorium',
+      }),
+    });
+    const tomorrowEventData = await tomorrowEventRes.json();
+    assert(
+      tomorrowEventRes.status === 201 && tomorrowEventData.success && tomorrowEventData.event,
+      `Test Case 20: Event scheduled for tomorrow (${tomorrowIST}) accepted with 201 Created`
+    );
+
+    // TEST CASE 21: Valid future schedule succeeds (Organizer createEvent)
+    const organizerFutureEventRes = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerData.token}`,
+      },
+      body: JSON.stringify({
+        title: 'Next Week Tech Hackathon',
+        description: 'A tech hackathon scheduled for 5 days in advance with valid ordering.',
+        category: 'Hackathon',
+        eventDate: futureDateIST,
+        startTime: '10:00',
+        endTime: '18:00',
+        venue: 'Innovation Lab 3',
+        maxCapacity: 120,
+      }),
+    });
+    const organizerFutureEventData = await organizerFutureEventRes.json();
+    assert(
+      organizerFutureEventRes.status === 201 && organizerFutureEventData.success && organizerFutureEventData.event,
+      `Test Case 21: Organizer event scheduled for future date (${futureDateIST}) accepted with 201 Created`
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);
