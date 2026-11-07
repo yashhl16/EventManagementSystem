@@ -53,14 +53,14 @@ app.get(['/api/health', '/health'], async (req, res) => {
     res.status(200).json({
       status,
       timestamp: new Date().toISOString(),
-      service: 'CampusPulse College Event Management System API',
+      service: 'SGU Field Project | College Event Management System API',
       database: dbInfo,
     });
   } catch (err) {
     res.status(200).json({
       status: 'degraded',
       timestamp: new Date().toISOString(),
-      service: 'CampusPulse College Event Management System API',
+      service: 'SGU Field Project | College Event Management System API',
       error: err.message,
     });
   }

@@ -45,7 +45,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
           </div>
 
           <h4 className="mt-4 font-serif text-xs font-bold uppercase tracking-[0.3em] text-amber-700 dark:text-amber-400">
-            CampusPulse Academic & Technical Council
+            SGU Academic & Technical Council
           </h4>
 
           <h2 className="mt-2 font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-slate-900 dark:text-white uppercase">

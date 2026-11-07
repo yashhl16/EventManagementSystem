@@ -58,7 +58,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
           <Sparkles className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">CampusPulse</h2>
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">SGU Field Project</h2>
           <div className="mt-0.5">
             <Badge
               variant={role === 'admin' ? 'purple' : role === 'organizer' ? 'primary' : 'success'}

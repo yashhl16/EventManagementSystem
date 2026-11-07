@@ -1,9 +1,16 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import app from './app.js';
 import { connectDB } from './config/db.js';
 import { ensureDemoAccounts } from './config/seed.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../server/.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,7 +22,7 @@ const startServer = async () => {
 
     app.listen(PORT, () => {
       console.log(`====================================================`);
-      console.log(` CampusPulse Event Hub API Server running on port ${PORT}`);
+      console.log(` SGU Field Project Event Hub API Server running on port ${PORT}`);
       console.log(` Health check: http://localhost:${PORT}/api/health`);
       console.log(` Admin Portal: http://localhost:5173/admin/login`);
       console.log(` Student Portal: http://localhost:5173/student/login`);

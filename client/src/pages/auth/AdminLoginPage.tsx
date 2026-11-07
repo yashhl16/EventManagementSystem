@@ -88,7 +88,7 @@ export const AdminLoginPage: React.FC = () => {
           </span>
 
           <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-white sm:text-3xl font-serif">
-            CampusPulse Central Control
+            SGU Field Project Central Control
           </h2>
           <p className="mt-2 text-xs text-slate-400 max-w-sm">
             Restricted access for designated university deans, provosts, and central system administrators.

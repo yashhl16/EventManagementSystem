@@ -1,6 +1,4 @@
 import dotenv from 'dotenv';
-dotenv.config();
-
 import pg from 'pg';
 import fs from 'fs';
 import path from 'path';
@@ -10,6 +8,12 @@ import { SCHEMA_SQL } from './schema.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Ensure .env is loaded whether running from project root, server directory, or serverless function
+dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../../server/.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 const { Pool } = pg;
 
 /**
@@ -17,7 +21,7 @@ const { Pool } = pg;
  * Resolves standard Neon & Vercel environment variables dynamically
  */
 export const getConnectionString = () => {
-  return (
+  const raw = (
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.POSTGRES_URL_NON_POOLING ||
@@ -36,6 +40,10 @@ export const getConnectionString = () => {
       ? `postgres://${encodeURIComponent(process.env.POSTGRES_USER)}:${encodeURIComponent(process.env.POSTGRES_PASSWORD)}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT || 5432}/${process.env.POSTGRES_DATABASE || 'neondb'}?sslmode=require`
       : null)
   );
+
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim().replace(/^["']|["']$/g, '');
+  return trimmed || null;
 };
 
 let isReady = false;
@@ -263,12 +271,34 @@ export const connectDB = async () => {
   if (connStr) {
     try {
       console.log('[DB] Initializing Neon PostgreSQL pool connection...');
-      const isSsl = !connStr.includes('localhost') && !connStr.includes('127.0.0.1');
+      const isLocal = connStr.includes('localhost') || connStr.includes('127.0.0.1');
+
+      // Strip query parameters like sslmode from URL to prevent pg-connection-string
+      // from overriding our explicit SSL object with strict CA requirements
+      let cleanConnStr = connStr;
+      let hostHeader = undefined;
+      try {
+        const parsed = new URL(connStr.replace(/^postgres:/, 'http:'));
+        hostHeader = parsed.hostname;
+      } catch (_) {}
+
+      if (cleanConnStr.includes('sslmode=')) {
+        cleanConnStr = cleanConnStr.replace(/([?&])sslmode=[^&]+(&|$)/g, '$1');
+        cleanConnStr = cleanConnStr.replace(/[?&]$/, '');
+      }
+
+      const sslConfig = isLocal
+        ? false
+        : {
+            rejectUnauthorized: false,
+            ...(hostHeader ? { servername: hostHeader } : {}),
+          };
+
       const newPool = new Pool({
-        connectionString: connStr,
-        ssl: isSsl ? { rejectUnauthorized: false } : false,
-        max: isVercel ? 3 : 10,
-        idleTimeoutMillis: 15000,
+        connectionString: cleanConnStr,
+        ssl: sslConfig,
+        max: isVercel ? 2 : 10,
+        idleTimeoutMillis: 10000,
         connectionTimeoutMillis: 10000,
       });
 

@@ -69,7 +69,7 @@ export const VerifyCertificatePage: React.FC = () => {
             Public Certificate Verification
           </h1>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Verify the authenticity of participation certificates issued by CampusPulse. Enter the unique alphanumeric credential ID printed on the certificate.
+            Verify the authenticity of participation certificates issued by SGU Field Project. Enter the unique alphanumeric credential ID printed on the certificate.
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export const VerifyCertificatePage: React.FC = () => {
             </div>
 
             <div className="mt-6 rounded-xl bg-slate-50 p-3 text-[11px] text-slate-500 dark:bg-slate-800/50 dark:text-slate-400 flex items-center justify-between">
-              <span>Verified against CampusPulse institutional ledger.</span>
+              <span>Verified against SGU Field Project institutional ledger.</span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400">
                 ● Authentic Record
               </span>

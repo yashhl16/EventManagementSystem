@@ -1,6 +1,6 @@
-# CampusPulse | Modern College Event Management & Campus Activity Platform
+# SGU Field Project | Modern College Event Management & Campus Activity Platform
 
-A modern, responsive, full-stack **College Event Management System** designed for higher education institutions. CampusPulse bridges students, student club coordinators, faculty event organizers, and central college administrators into a unified, secure campus platform.
+A modern, responsive, full-stack **College Event Management System** designed for Sanjay Ghodawat University (SGU). SGU Field Project bridges students, student club coordinators, faculty event organizers, and central college administrators into a unified, secure campus platform.
 
 ---
 

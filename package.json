@@ -1,7 +1,7 @@
 {
-  "name": "campus-pulse",
+  "name": "sgu-field-project",
   "version": "1.0.0",
-  "description": "Modern College Event Management & Campus Activity Platform",
+  "description": "SGU Field Project | College Event Management Platform",
   "type": "module",
   "scripts": {
     "install:all": "npm --prefix server install && npm --prefix client install",

@@ -75,7 +75,7 @@ export const LandingPage: React.FC = () => {
             {/* Pill */}
             <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/80 px-3.5 py-1 text-xs font-semibold text-indigo-700 shadow-sm dark:border-indigo-900/60 dark:bg-indigo-950/60 dark:text-indigo-300">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>CampusPulse Event Operating System 2026</span>
+              <span>SGU Field Project | Event Operating System 2026</span>
             </div>
 
             {/* Headline */}
@@ -87,7 +87,7 @@ export const LandingPage: React.FC = () => {
             </h1>
 
             <p className="mt-5 text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              The centralized college event management system. Discover upcoming national hackathons, technical workshops, and university fests with one-click registrations and instant QR entry passes.
+              The official SGU Field Project college event management system. Discover upcoming national hackathons, technical workshops, and university fests with one-click registrations and instant QR entry passes.
             </p>
 
             {/* CTAs */}
