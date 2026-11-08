@@ -2,10 +2,13 @@ export type UserRole = 'student' | 'organizer' | 'admin';
 
 export interface User {
   _id: string;
+  id?: string;
   name: string;
+  fullName?: string;
   email: string;
   role: UserRole;
   studentId?: string;
+  rollNumber?: string;
   employeeId?: string;
   adminId?: string;
   department?: string;
@@ -86,10 +89,11 @@ export type RegistrationStatus = 'registered' | 'confirmed' | 'waitlisted' | 'at
 
 export interface Registration {
   _id: string;
+  id?: string;
   event: CollegeEvent;
   user: User;
   ticketCode: string;
-  registrationType: 'individual' | 'team';
+  registrationType?: 'individual' | 'team';
   teamName?: string;
   team?: {
     _id: string;
@@ -98,7 +102,9 @@ export interface Registration {
   };
   status: RegistrationStatus;
   qrCodeData: string;
-  registeredAt: string;
+  registeredAt?: string;
+  registrationDate?: string;
+  createdAt?: string;
   attendedAt?: string;
   certificateIssued?: boolean;
   certificate?: string | Certificate;

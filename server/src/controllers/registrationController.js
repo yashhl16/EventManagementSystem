@@ -103,9 +103,32 @@ export const registerForEvent = async (req, res) => {
     // 5. Increment registered_count on event
     await client.query('UPDATE events SET registered_count = registered_count + 1 WHERE id = $1', [eventId]);
 
+    // 6. Fetch full registration record with event and user data
+    const fullRegRes = await client.query(
+      `SELECT r.*,
+              e.title as event_title,
+              e.category as event_category,
+              e.event_date,
+              e.start_time as event_start_time,
+              e.end_time as event_end_time,
+              e.venue as event_venue,
+              e.banner_image as event_banner,
+              e.status as event_status,
+              u.name as user_name,
+              u.email as user_email,
+              u.student_id as user_student_id,
+              u.department as user_department,
+              u.phone as user_phone
+       FROM event_registrations r
+       JOIN events e ON r.event_id = e.id
+       JOIN users u ON r.user_id = u.id
+       WHERE r.id = $1`,
+      [regRow.id]
+    );
+
     await client.query('COMMIT');
 
-    const registration = mapRegistration(regRow);
+    const registration = mapRegistration(fullRegRes.rows[0] || regRow);
     res.status(201).json({
       success: true,
       message: 'Registration confirmed! Your digital entry pass is now available in your dashboard.',
@@ -181,9 +204,32 @@ export const registerTeam = async (req, res) => {
     );
 
     await client.query('UPDATE events SET registered_count = registered_count + 1 WHERE id = $1', [eventId]);
+
+    const fullTeamRegRes = await client.query(
+      `SELECT r.*,
+              e.title as event_title,
+              e.category as event_category,
+              e.event_date,
+              e.start_time as event_start_time,
+              e.end_time as event_end_time,
+              e.venue as event_venue,
+              e.banner_image as event_banner,
+              e.status as event_status,
+              u.name as user_name,
+              u.email as user_email,
+              u.student_id as user_student_id,
+              u.department as user_department,
+              u.phone as user_phone
+       FROM event_registrations r
+       JOIN events e ON r.event_id = e.id
+       JOIN users u ON r.user_id = u.id
+       WHERE r.id = $1`,
+      [regId]
+    );
+
     await client.query('COMMIT');
 
-    const registration = mapRegistration(insertRes.rows[0]);
+    const registration = mapRegistration(fullTeamRegRes.rows[0] || insertRes.rows[0]);
     res.status(201).json({
       success: true,
       message: `Team "${teamName}" registered successfully! Entry passes generated.`,
@@ -214,9 +260,15 @@ export const getMyRegistrations = async (req, res) => {
               e.end_time as event_end_time,
               e.venue as event_venue,
               e.banner_image as event_banner,
-              e.status as event_status
+              e.status as event_status,
+              u.name as user_name,
+              u.email as user_email,
+              u.student_id as user_student_id,
+              u.department as user_department,
+              u.phone as user_phone
        FROM event_registrations r
        JOIN events e ON r.event_id = e.id
+       JOIN users u ON r.user_id = u.id
        WHERE r.user_id = $1
        ORDER BY r.registration_date DESC`,
       [userId]

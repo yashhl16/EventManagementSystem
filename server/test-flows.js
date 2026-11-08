@@ -347,6 +347,35 @@ async function runTests() {
       'Duplicate registration rejected with status 400'
     );
 
+    // Verify user profile binding and registration date formatting in registration object
+    assert(
+      registerData.registration.user &&
+        typeof registerData.registration.user === 'object' &&
+        (registerData.registration.user.fullName || registerData.registration.user.name) &&
+        (registerData.registration.user.department || registerData.registration.user.studentId),
+      'Entry pass user profile bound dynamically with name, studentId, and department'
+    );
+
+    assert(
+      registerData.registration.registrationDate &&
+        !isNaN(new Date(registerData.registration.registrationDate).getTime()) &&
+        !isNaN(new Date(registerData.registration.registeredAt).getTime()),
+      'Registration date safely parsed without "Invalid Date" errors'
+    );
+
+    const myRegistrationsCheck = await fetch(`${BASE_URL}/registrations/my`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const myRegistrationsData = await myRegistrationsCheck.json();
+    const myRegItem = (myRegistrationsData.registrations || []).find((r) => r.id === registrationId || r._id === registrationId);
+    assert(
+      myRegItem &&
+        myRegItem.user &&
+        (myRegItem.user.name || myRegItem.user.fullName) &&
+        !isNaN(new Date(myRegItem.registrationDate || myRegItem.registeredAt).getTime()),
+      '/api/registrations/my supplies populated attendee details and parseable timestamps'
+    );
+
     // 15. Admin Attendance Roster
     const attendanceRes = await fetch(`${BASE_URL}/admin/events/${createdEventId}/attendance`, {
       headers: { Authorization: `Bearer ${adminToken}` },

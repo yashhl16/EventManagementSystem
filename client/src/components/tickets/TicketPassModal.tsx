@@ -1,7 +1,8 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Printer, Calendar, Clock, MapPin, User, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, Printer, Calendar, Clock, MapPin, Sparkles } from 'lucide-react';
 import { Registration } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
 
 interface TicketPassModalProps {
@@ -15,10 +16,53 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
   registration,
   onClose,
 }) => {
+  const { user: authUser } = useAuth();
+
   if (!isOpen || !registration) return null;
 
   const event = registration.event;
-  const user = registration.user;
+  const regUser = typeof registration.user === 'object' && registration.user !== null ? registration.user : null;
+
+  // Resolve attendee name dynamically with fallbacks
+  const attendeeName =
+    regUser?.fullName ||
+    regUser?.name ||
+    (authUser as any)?.fullName ||
+    authUser?.name ||
+    'Student Attendee';
+
+  // Resolve student id / roll number with fallbacks
+  const studentId =
+    regUser?.studentId ||
+    (regUser as any)?.rollNumber ||
+    (authUser as any)?.studentId ||
+    (authUser as any)?.rollNumber ||
+    (authUser as any)?.student_id ||
+    regUser?._id ||
+    authUser?._id ||
+    '';
+
+  // Resolve department with fallbacks
+  const department =
+    regUser?.department ||
+    authUser?.department ||
+    (authUser as any)?.dept ||
+    'General';
+
+  // Safe registration date parsing (handling ISO strings, timestamps, or Neon strings)
+  const regDate =
+    registration.registrationDate ||
+    registration.registeredAt ||
+    registration.createdAt;
+
+  const formattedRegDate =
+    regDate && !isNaN(new Date(regDate).getTime())
+      ? new Date(regDate).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : 'Recently';
 
   const handlePrint = () => {
     window.print();
@@ -26,9 +70,9 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
 
   const qrPayload = JSON.stringify({
     ticketCode: registration.ticketCode,
-    eventId: event?._id,
-    userId: user?._id,
-    name: user?.name,
+    eventId: event?._id || event?.id,
+    userId: regUser?._id || authUser?._id || '',
+    name: attendeeName,
   });
 
   return (
@@ -89,7 +133,7 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
             </span>
           </div>
           <div className="text-[11px] font-mono text-slate-400">
-            Reg: {new Date(registration.registeredAt).toLocaleDateString()}
+            Reg: {formattedRegDate}
           </div>
           <div className="absolute -right-3 h-6 w-6 rounded-full bg-slate-900/60 dark:bg-slate-950" />
         </div>
@@ -99,19 +143,25 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div>
               <span className="text-slate-400">Attendee Name</span>
-              <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{user?.name}</p>
+              <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{attendeeName}</p>
             </div>
             <div>
               <span className="text-slate-400">Student ID / Dept</span>
               <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
-                {user?.studentId || 'N/A'} • {user?.department || 'General'}
+                {studentId ? `${studentId} • ${department}` : department}
               </p>
             </div>
             <div>
               <span className="text-slate-400">Date & Schedule</span>
               <p className="mt-0.5 font-bold text-slate-900 dark:text-white flex items-center gap-1">
                 <Calendar className="h-3 w-3 text-indigo-500" />
-                {event ? new Date(event.eventDate).toLocaleDateString() : ''}
+                {event?.eventDate && !isNaN(new Date(event.eventDate).getTime())
+                  ? new Date(event.eventDate).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  : (event?.eventDate || 'Scheduled')}
               </p>
               <p className="text-[11px] text-slate-500">{event?.startTime} - {event?.endTime}</p>
             </div>
@@ -119,7 +169,7 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
               <span className="text-slate-400">Campus Venue</span>
               <p className="mt-0.5 font-bold text-slate-900 dark:text-white flex items-center gap-1">
                 <MapPin className="h-3 w-3 text-indigo-500 shrink-0" />
-                <span className="truncate">{event?.venue}</span>
+                <span className="truncate">{event?.venue || 'Campus Venue'}</span>
               </p>
             </div>
           </div>

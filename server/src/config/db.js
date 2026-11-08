@@ -431,9 +431,11 @@ export const mapUser = (row) => {
     _id: row.id,
     id: row.id,
     name: row.name,
+    fullName: row.name,
     email: row.email,
     role: row.role,
     studentId: row.student_id || '',
+    rollNumber: row.student_id || '',
     employeeId: row.employee_id || '',
     adminId: row.admin_id || '',
     department: row.department || 'General',
@@ -577,6 +579,8 @@ export const mapRegistration = (row) => {
     ? computeEventTimestamps(row.event_date, row.event_start_time, row.event_end_time, row.event_status)
     : { startDate: null, endDate: null, eventStatus: 'Upcoming' };
 
+  const resolvedRegDate = row.registration_date || row.registered_at || row.created_at || new Date().toISOString();
+
   return {
     _id: row.id,
     id: row.id,
@@ -601,18 +605,35 @@ export const mapRegistration = (row) => {
       _id: row.user_id,
       id: row.user_id,
       name: row.user_name,
+      fullName: row.user_name,
       email: row.user_email,
-      studentId: row.user_student_id,
-      department: row.user_department,
-    } : row.user_id,
+      studentId: row.user_student_id || '',
+      rollNumber: row.user_student_id || '',
+      department: row.user_department || 'General',
+      phone: row.user_phone || '',
+    } : (typeof row.user === 'object' && row.user !== null ? {
+      ...row.user,
+      fullName: row.user.fullName || row.user.name,
+      rollNumber: row.user.rollNumber || row.user.studentId,
+    } : {
+      _id: row.user_id,
+      id: row.user_id,
+      name: '',
+      fullName: '',
+      studentId: '',
+      rollNumber: '',
+      department: 'General',
+    }),
     ticketCode: row.ticket_code,
     status: row.status,
     attendanceStatus: row.attendance_status || (row.status === 'attended' ? 'present' : 'unmarked'),
-    registrationDate: row.registration_date,
+    registrationDate: resolvedRegDate,
+    registeredAt: resolvedRegDate,
     qrCodeData: row.qr_code_data,
     teamId: row.team_id,
     teamName: row.team_name,
-    createdAt: row.created_at,
+    createdAt: row.created_at || resolvedRegDate,
+    updatedAt: row.updated_at,
   };
 };
 
