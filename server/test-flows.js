@@ -1272,6 +1272,51 @@ async function runTests() {
       'Test Case 30c: Direct /api/events/:eventId/my-submission retrieves current active submission'
     );
 
+    // 31: Profile Update Security - Restrict edits to name, roll number, dept, avatar while locking email & username
+    const profileUpdateRes = await fetch(`${BASE_URL}/user/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        fullName: 'Yash Patil',
+        rollNumber: 'SGU2023CS0101',
+        department: 'Artificial Intelligence & Data Science',
+        avatar: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        email: 'malicious_change@evil.com',
+        username: 'malicious_user',
+      }),
+    });
+    const profileUpdateData = await profileUpdateRes.json();
+    assert(
+      profileUpdateRes.status === 200 &&
+        profileUpdateData.success &&
+        profileUpdateData.user?.fullName === 'Yash Patil' &&
+        profileUpdateData.user?.rollNumber === 'SGU2023CS0101' &&
+        profileUpdateData.user?.department === 'Artificial Intelligence & Data Science' &&
+        profileUpdateData.user?.avatar.startsWith('data:image/png;base64') &&
+        profileUpdateData.user?.email === 'student@college.edu' &&
+        profileUpdateData.user?.username === 'student',
+      'Test Case 31a: Student profile update updates name, rollNumber, department, avatar, while preserving locked email & username'
+    );
+
+    // 31b: Reject Full Name exceeding 60 characters
+    const profileLongNameRes = await fetch(`${BASE_URL}/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        fullName: 'A'.repeat(61),
+      }),
+    });
+    assert(
+      profileLongNameRes.status === 400,
+      'Test Case 31b: Profile update rejects full names exceeding 60 characters with 400 Bad Request'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

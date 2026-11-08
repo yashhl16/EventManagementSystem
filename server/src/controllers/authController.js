@@ -430,14 +430,47 @@ export const getMe = async (req, res) => {
  */
 export const updateProfile = async (req, res) => {
   try {
-    const { name, phone, bio, department, graduationYear, interests, organizationName } = req.body;
+    // Security: Strictly strip email and username to prevent modification
+    delete req.body.email;
+    delete req.body.username;
+
+    const {
+      name,
+      fullName,
+      studentId,
+      rollNumber,
+      avatar,
+      profilePicture,
+      phone,
+      bio,
+      department,
+      graduationYear,
+      interests,
+      organizationName,
+    } = req.body;
     const userId = req.user.id || req.user._id;
 
     let cleanName = null;
-    if (name !== undefined && name !== null) {
-      const check = validateName(name, 'Full name');
+    const targetName = fullName !== undefined ? fullName : name;
+    if (targetName !== undefined && targetName !== null) {
+      const check = validateName(targetName, 'Full name');
       if (!check.isValid) return res.status(400).json({ success: false, message: check.message });
       cleanName = check.value;
+    }
+
+    let cleanStudentId = null;
+    const targetStudentId = rollNumber !== undefined ? rollNumber : studentId;
+    if (targetStudentId !== undefined && targetStudentId !== null) {
+      const trimmed = String(targetStudentId).trim();
+      const check = validateText(trimmed, 'Roll number / Student ID', 1, 50, false);
+      if (!check.isValid) return res.status(400).json({ success: false, message: check.message });
+      cleanStudentId = check.value;
+    }
+
+    let cleanAvatar = null;
+    const targetAvatar = profilePicture !== undefined ? profilePicture : avatar;
+    if (targetAvatar !== undefined && targetAvatar !== null && String(targetAvatar).trim() !== '') {
+      cleanAvatar = String(targetAvatar).trim();
     }
 
     let cleanPhone = null;
@@ -479,8 +512,10 @@ export const updateProfile = async (req, res) => {
            graduation_year = COALESCE($5, graduation_year),
            interests = COALESCE($6, interests),
            organization_name = COALESCE($7, organization_name),
+           student_id = COALESCE($8, student_id),
+           avatar = COALESCE($9, avatar),
            updated_at = NOW()
-       WHERE id = $8
+       WHERE id = $10
        RETURNING *`,
       [
         cleanName,
@@ -490,6 +525,8 @@ export const updateProfile = async (req, res) => {
         graduationYear ? Number(graduationYear) : null,
         interests ? JSON.stringify(interests) : null,
         cleanOrg,
+        cleanStudentId,
+        cleanAvatar,
         userId,
       ]
     );

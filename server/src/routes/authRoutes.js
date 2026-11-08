@@ -30,6 +30,7 @@ router.post('/forgot-password', authLimiter, forgotPassword);
 // Protected User Profile Endpoints
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
+router.patch('/profile', protect, updateProfile);
 router.put('/change-password', protect, changePassword);
 
 export default router;

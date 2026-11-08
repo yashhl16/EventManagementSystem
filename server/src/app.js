@@ -15,6 +15,8 @@ import announcementRoutes from './routes/announcementRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
+import { protect } from './middleware/auth.js';
+import { updateProfile, getMe } from './controllers/authController.js';
 
 dotenv.config();
 
@@ -69,6 +71,15 @@ app.get(['/api/health', '/health'], async (req, res) => {
 });
 
 // Mount application API routes (supporting both /api/* and stripped /* paths)
+app.use(['/api/user/profile', '/user/profile', '/api/users/profile', '/users/profile'], (req, res, next) => {
+  if (req.method === 'PUT' || req.method === 'PATCH') {
+    return protect(req, res, () => updateProfile(req, res, next));
+  }
+  if (req.method === 'GET') {
+    return protect(req, res, () => getMe(req, res, next));
+  }
+  next();
+});
 app.use(['/api/auth', '/auth'], authRoutes);
 app.use(['/api/events', '/events'], eventRoutes);
 app.use(['/api/registrations', '/registrations'], registrationRoutes);

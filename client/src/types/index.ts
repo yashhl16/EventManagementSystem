@@ -6,6 +6,7 @@ export interface User {
   name: string;
   fullName?: string;
   email: string;
+  username?: string;
   role: UserRole;
   studentId?: string;
   rollNumber?: string;

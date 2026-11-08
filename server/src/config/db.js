@@ -433,6 +433,7 @@ export const mapUser = (row) => {
     name: row.name,
     fullName: row.name,
     email: row.email,
+    username: row.email ? row.email.split('@')[0] : '',
     role: row.role,
     studentId: row.student_id || '',
     rollNumber: row.student_id || '',

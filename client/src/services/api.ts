@@ -63,6 +63,12 @@ export const authService = {
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
 };
 
+/* ================= USER / PROFILE API ================= */
+export const userService = {
+  getProfile: () => api.get('/user/profile'),
+  updateProfile: (data: any) => api.put('/user/profile', data),
+};
+
 /* ================= EVENT API ================= */
 export const eventService = {
   getEvents: (params?: any) => api.get('/events', { params }),
