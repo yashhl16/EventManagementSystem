@@ -113,6 +113,7 @@ async function runTests() {
       organizerLoginRes.status === 200 && organizerData.token && organizerData.user.role === 'organizer',
       'Organizer demo account logs in successfully with valid session'
     );
+    const organizerToken = organizerData.token;
 
     // 9. Input Validation: Missing fields rejected for new registrations
     const missingFieldsReg = await fetch(`${BASE_URL}/auth/student/register`, {
@@ -952,6 +953,223 @@ async function runTests() {
     assert(
       checkInvalidPhoneRes.status === 400,
       'Test Case 25c: Student registration with 9-digit phone continues to be rejected with 400 Bad Request'
+    );
+
+    // ========================================================
+    // TEST SUITE: TEAM REGISTRATION & DOCUMENT SUBMISSION FLOWS
+    // ========================================================
+
+    // Create a dedicated Hackathon team event for testing
+    const createHackathonRes = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Smart India Hackathon (SIH) 2026',
+        description: 'National collegiate hackathon for high-impact software and hardware solutions.',
+        category: 'Hackathon',
+        eventDate: '2026-11-25',
+        startTime: '09:00',
+        endTime: '21:00',
+        venue: 'Campus Innovation Center',
+        venueType: 'offline',
+        maxCapacity: 150,
+        isTeamEvent: true,
+        maxTeamSize: 4,
+        teamMinSize: 2,
+        teamMaxSize: 4,
+        tags: ['Hackathon', 'SIH', 'Innovation'],
+      }),
+    });
+    const createHackathonData = await createHackathonRes.json();
+    assert(
+      createHackathonRes.status === 201 && createHackathonData.event?._id,
+      'Test Case 26a: Organizer creates Hackathon team event with isTeamEvent: true'
+    );
+
+    const hackathonId = createHackathonData.event?._id;
+
+    // Create a second student account for team testing
+    const student2Email = `teammate_${Date.now()}@college.edu`;
+    const student2Pass = 'Teammate@12345';
+    const regStudent2Res = await fetch(`${BASE_URL}/auth/student/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Jordan Teammate',
+        email: student2Email,
+        password: student2Pass,
+        phone: '9876543299',
+        studentId: `CS-${Date.now().toString().slice(-4)}`,
+        department: 'Computer Science & Engineering',
+      }),
+    });
+    const regStudent2Data = await regStudent2Res.json();
+    assert(
+      regStudent2Res.status === 201 && regStudent2Data.token,
+      'Test Case 26b: Teammate student account registered successfully'
+    );
+    const student2Token = regStudent2Data.token;
+
+    // Student 1 creates a team
+    const createTeamRes = await fetch(`${BASE_URL}/teams/${hackathonId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        name: 'Neural Pioneers',
+        invites: [student2Email],
+      }),
+    });
+    const createTeamData = await createTeamRes.json();
+    assert(
+      createTeamRes.status === 201 && createTeamData.success && createTeamData.team?.inviteCode,
+      'Test Case 26c: Student 1 creates team "Neural Pioneers" with generated inviteCode'
+    );
+    const createdTeam = createTeamData.team;
+    const inviteCode = createdTeam?.inviteCode;
+
+    // Student 1 queries my team
+    const myTeamRes = await fetch(`${BASE_URL}/teams/${hackathonId}/my`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const myTeamData = await myTeamRes.json();
+    assert(
+      myTeamRes.status === 200 && myTeamData.hasTeam && myTeamData.team.members?.length >= 1,
+      'Test Case 26d: Team Leader verifies team roster via /teams/:eventId/my'
+    );
+
+    // TEST CASE 27: Teammate joins using invite code
+    const joinTeamRes = await fetch(`${BASE_URL}/teams/${hackathonId}/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${student2Token}`,
+      },
+      body: JSON.stringify({ inviteCode }),
+    });
+    const joinTeamData = await joinTeamRes.json();
+    assert(
+      joinTeamRes.status === 200 && joinTeamData.success && joinTeamData.team?.members?.length === 2,
+      'Test Case 27a: Student 2 successfully joins "Neural Pioneers" using invite code'
+    );
+
+    // Student 2 cannot join a second time
+    const duplicateJoinRes = await fetch(`${BASE_URL}/teams/${hackathonId}/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${student2Token}`,
+      },
+      body: JSON.stringify({ inviteCode }),
+    });
+    assert(
+      duplicateJoinRes.status === 400,
+      'Test Case 27b: Duplicate team join blocked with 400 Bad Request'
+    );
+
+    // TEST CASE 28: Deliverable Document Submission
+    // 28a: Disallow invalid extensions (e.g., .exe)
+    const invalidFileRes = await fetch(`${BASE_URL}/submissions/${hackathonId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Malicious Payload Test',
+        fileName: 'virus.exe',
+        fileData: 'data:application/octet-stream;base64,TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAA=',
+      }),
+    });
+    assert(
+      invalidFileRes.status === 400,
+      'Test Case 28a: Non-allowed document type (.exe) rejected with 400 Bad Request'
+    );
+
+    // 28b: Submit valid PDF deliverable with GitHub and Figma links
+    const submitPdfRes = await fetch(`${BASE_URL}/submissions/${hackathonId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Neural Vision SIH Presentation',
+        description: 'Autonomous disaster response system powered by multimodal vision transformers.',
+        fileName: 'neural_vision_presentation.pdf',
+        fileData: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0ZURlY29kZSA+PgpzdHJlYW0KeAE=',
+        githubUrl: 'https://github.com/yashhl16/neural-vision',
+        figmaUrl: 'https://figma.com/file/sample123/Neural-Vision-UI',
+      }),
+    });
+    const submitPdfData = await submitPdfRes.json();
+    assert(
+      submitPdfRes.status === 201 && submitPdfData.success && submitPdfData.submission?.fileUrl,
+      'Test Case 28b: Team successfully submits PDF deliverable with GitHub and Figma repository links'
+    );
+
+    // 28c: Teammate can view the submitted deliverable
+    const teammateSubmissionRes = await fetch(`${BASE_URL}/submissions/${hackathonId}/my`, {
+      headers: { Authorization: `Bearer ${student2Token}` },
+    });
+    const teammateSubmissionData = await teammateSubmissionRes.json();
+    assert(
+      teammateSubmissionRes.status === 200 &&
+        teammateSubmissionData.hasSubmission &&
+        teammateSubmissionData.submission.fileName === 'neural_vision_presentation.pdf',
+      'Test Case 28c: Teammates can immediately view and track team deliverable status'
+    );
+
+    // 28d: Team Leader updates/replaces deliverable with PowerPoint deck (.pptx)
+    const updateSubmissionRes = await fetch(`${BASE_URL}/submissions/${hackathonId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Neural Vision Final Pitch Deck',
+        description: 'Updated pitch deck including financial projections and pilot results.',
+        fileName: 'neural_vision_final.pptx',
+        fileData: 'data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,UEsDBBQAAAAIAAA==',
+        githubUrl: 'https://github.com/yashhl16/neural-vision-v2',
+      }),
+    });
+    const updateSubmissionData = await updateSubmissionRes.json();
+    assert(
+      updateSubmissionRes.status === 200 &&
+        updateSubmissionData.submission?.fileName === 'neural_vision_final.pptx',
+      'Test Case 28d: Team leader successfully updates/replaces submitted document before deadline'
+    );
+
+    // TEST CASE 29: Organizer & Admin Review of Teams and Submissions
+    // 29a: Organizer fetches all registered teams for hackathon
+    const orgTeamsRes = await fetch(`${BASE_URL}/events/${hackathonId}/teams`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const orgTeamsData = await orgTeamsRes.json();
+    assert(
+      orgTeamsRes.status === 200 &&
+        Array.isArray(orgTeamsData.teams) &&
+        orgTeamsData.teams.some((t) => t.name === 'Neural Pioneers'),
+      'Test Case 29a: Organizer views all registered teams and member rosters'
+    );
+
+    // 29b: Organizer fetches all deliverables for review
+    const orgSubmissionsRes = await fetch(`${BASE_URL}/events/${hackathonId}/submissions`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const orgSubmissionsData = await orgSubmissionsRes.json();
+    assert(
+      orgSubmissionsRes.status === 200 &&
+        Array.isArray(orgSubmissionsData.submissions) &&
+        orgSubmissionsData.submissions.some((s) => s.fileName === 'neural_vision_final.pptx'),
+      'Test Case 29b: Organizer retrieves deliverable submissions and external links for evaluation'
     );
 
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);

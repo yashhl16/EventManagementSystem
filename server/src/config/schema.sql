@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS events (
   is_team_event BOOLEAN DEFAULT false,
   team_size_min INT DEFAULT 1,
   team_size_max INT DEFAULT 4,
+  max_team_size INT DEFAULT 4,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -130,6 +131,42 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS teams (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  leader_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  invite_code VARCHAR(20) UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS team_members (
+  id VARCHAR(36) PRIMARY KEY,
+  team_id VARCHAR(36) NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('Leader', 'Member')) DEFAULT 'Member',
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_team_user UNIQUE (team_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS submissions (
+  id VARCHAR(36) PRIMARY KEY,
+  team_id VARCHAR(36) REFERENCES teams(id) ON DELETE CASCADE,
+  event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT DEFAULT '',
+  file_url TEXT NOT NULL,
+  file_type VARCHAR(50) NOT NULL,
+  file_name VARCHAR(255) DEFAULT '',
+  file_size INT DEFAULT 0,
+  github_url TEXT DEFAULT '',
+  figma_url TEXT DEFAULT '',
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Essential Performance & Constraint Indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
@@ -145,4 +182,11 @@ CREATE INDEX IF NOT EXISTS idx_certificates_student ON certificates(student_id);
 CREATE INDEX IF NOT EXISTS idx_certificates_code ON certificates(certificate_code);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_teams_event ON teams(event_id);
+CREATE INDEX IF NOT EXISTS idx_teams_leader ON teams(leader_id);
+CREATE INDEX IF NOT EXISTS idx_teams_code ON teams(invite_code);
+CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_team ON submissions(team_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_event ON submissions(event_id);
 

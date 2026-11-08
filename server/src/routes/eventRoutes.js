@@ -11,9 +11,15 @@ import {
   cancelEvent,
   getMyOrganizedEvents,
 } from '../controllers/eventController.js';
+import teamRoutes from './teamRoutes.js';
+import submissionRoutes from './submissionRoutes.js';
 import { protect, requireAnyRole } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Mount Team and Submission sub-routes on events
+router.use('/:eventId/teams', teamRoutes);
+router.use('/:eventId/submissions', submissionRoutes);
 
 // Public routes
 router.get('/', getEvents);

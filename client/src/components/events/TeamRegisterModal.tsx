@@ -8,7 +8,7 @@ interface TeamRegisterModalProps {
   minSize: number;
   maxSize: number;
   isLoading?: boolean;
-  onCreateTeam: (teamName: string) => void;
+  onCreateTeam: (teamName: string, invites?: string[]) => void;
   onJoinTeam: (joinCode: string) => void;
   onClose: () => void;
 }
@@ -25,6 +25,7 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
 }) => {
   const [tab, setTab] = useState<'create' | 'join'>('create');
   const [teamName, setTeamName] = useState('');
+  const [invitesText, setInvitesText] = useState('');
   const [joinCode, setJoinCode] = useState('');
 
   if (!isOpen) return null;
@@ -33,7 +34,11 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
     e.preventDefault();
     if (tab === 'create') {
       if (!teamName.trim()) return;
-      onCreateTeam(teamName.trim());
+      const invites = invitesText
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      onCreateTeam(teamName.trim(), invites);
     } else {
       if (!joinCode.trim()) return;
       onJoinTeam(joinCode.trim());
@@ -92,23 +97,42 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {tab === 'create' ? (
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Team Name
-              </label>
-              <input
-                type="text"
-                required
-                minLength={2}
-                maxLength={100}
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder="e.g. CyberKnights or ByteBuilders"
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-              />
-              <p className="mt-1.5 text-[11px] text-slate-400">
-                You will become the team leader and receive an invite code to share with your teammates (2-100 characters).
-              </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Team Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  minLength={2}
+                  maxLength={100}
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="e.g. CyberKnights or ByteBuilders"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  You will become the team leader and receive an invite code to share with your teammates (2-100 characters).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Invite Teammates (Optional)
+                </label>
+                <input
+                  type="text"
+                  maxLength={250}
+                  value={invitesText}
+                  onChange={(e) => setInvitesText(e.target.value)}
+                  placeholder="Enter emails or student IDs (comma separated)"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  Invited students will immediately receive an in-app invite notification with your team's code.
+                </p>
+              </div>
             </div>
           ) : (
             <div>

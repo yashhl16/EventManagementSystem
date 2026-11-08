@@ -187,4 +187,47 @@ export const notificationService = {
   markAllAsRead: () => api.put('/notifications/read-all'),
 };
 
+/* ================= TEAM & SUBMISSION API ================= */
+export const teamService = {
+  createTeam: (eventId: string, data: { name: string; invites?: string[] }) =>
+    api.post(`/events/${eventId}/teams`, data),
+
+  joinTeam: (eventId: string, inviteCode: string) =>
+    api.post(`/events/${eventId}/teams/join`, { inviteCode }),
+
+  getMyTeam: (eventId: string) =>
+    api.get(`/events/${eventId}/teams/my-team`),
+
+  getEventTeams: (eventId: string) =>
+    api.get(`/events/${eventId}/teams`),
+
+  inviteMember: (eventId: string, data: { emailOrStudentId: string }) =>
+    api.post(`/events/${eventId}/teams/invite`, data),
+
+  removeMember: (eventId: string, memberId: string) =>
+    api.delete(`/events/${eventId}/teams/members/${memberId}`),
+};
+
+export const submissionService = {
+  submitDeliverable: (
+    eventId: string,
+    data: {
+      title: string;
+      description?: string;
+      fileUrl: string;
+      fileName?: string;
+      fileType: string;
+      fileSize?: number;
+      githubUrl?: string;
+      figmaUrl?: string;
+    }
+  ) => api.post(`/events/${eventId}/submissions`, data),
+
+  getMySubmission: (eventId: string) =>
+    api.get(`/events/${eventId}/submissions/my-submission`),
+
+  getEventSubmissions: (eventId: string) =>
+    api.get(`/events/${eventId}/submissions`),
+};
+
 export default api;

@@ -17,13 +17,14 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { CollegeEvent, Registration } from '../../types';
-import { eventService, registrationService } from '../../services/api';
+import { CollegeEvent, Registration, Team, Submission } from '../../types';
+import { eventService, registrationService, teamService } from '../../services/api';
 import { CategoryBadge, StatusBadge, EventLifecycleBadge } from '../../components/common/Badge';
 import { calculateEventStatus } from '../../utils/eventStatus';
 import { Button } from '../../components/common/Button';
 import { ConflictAlertModal } from '../../components/events/ConflictAlertModal';
 import { TeamRegisterModal } from '../../components/events/TeamRegisterModal';
+import { TeamDashboardCard } from '../../components/events/TeamDashboardCard';
 import { TicketPassModal } from '../../components/tickets/TicketPassModal';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
@@ -36,6 +37,8 @@ export const EventDetailsPage: React.FC = () => {
 
   const [event, setEvent] = useState<CollegeEvent | null>(null);
   const [existingRegistration, setExistingRegistration] = useState<Registration | null>(null);
+  const [myTeam, setMyTeam] = useState<Team | null>(null);
+  const [allEventTeams, setAllEventTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ text: string; isError: boolean } | null>(null);
@@ -55,13 +58,28 @@ export const EventDetailsPage: React.FC = () => {
       }
 
       // If student is authenticated, check their registration status for this event
-      if (isAuthenticated && role === 'student') {
-        const myRegs = await registrationService.getMyRegistrations();
-        if (myRegs.data.success) {
-          const match = (myRegs.data.registrations || []).find(
-            (r: any) => String(r.event?._id || r.event) === String(id) && r.status !== 'cancelled'
-          );
-          setExistingRegistration(match || null);
+      if (isAuthenticated) {
+        if (role === 'student') {
+          const myRegs = await registrationService.getMyRegistrations();
+          if (myRegs.data.success) {
+            const match = (myRegs.data.registrations || []).find(
+              (r: any) => String(r.event?._id || r.event) === String(id) && r.status !== 'cancelled'
+            );
+            setExistingRegistration(match || null);
+          }
+        }
+
+        // Fetch team information for team-based events
+        const teamRes = await teamService.getMyTeam(id).catch(() => ({ data: { hasTeam: false, team: null } }));
+        if (teamRes.data?.hasTeam && teamRes.data?.team) {
+          setMyTeam(teamRes.data.team);
+        } else {
+          setMyTeam(null);
+        }
+
+        if (role === 'organizer' || role === 'admin') {
+          const teamsListRes = await teamService.getEventTeams(id).catch(() => ({ data: { teams: [] } }));
+          setAllEventTeams(teamsListRes.data?.teams || []);
         }
       }
     } catch (err) {
@@ -116,16 +134,15 @@ export const EventDetailsPage: React.FC = () => {
     }
   };
 
-  const handleCreateTeam = async (teamName: string) => {
+  const handleCreateTeam = async (teamName: string, invites?: string[]) => {
     if (!id) return;
     setIsRegistering(true);
     try {
-      const res = await registrationService.registerTeam(id, teamName);
+      const res = await teamService.createTeam(id, { name: teamName, invites });
       if (res.data.success) {
         setShowTeamModal(false);
-        setExistingRegistration(res.data.registration);
         setActionMessage({ text: res.data.message, isError: false });
-        confetti({ particleCount: 70, spread: 60 });
+        confetti({ particleCount: 80, spread: 70 });
         await fetchEventData();
       }
     } catch (err: any) {
@@ -142,12 +159,11 @@ export const EventDetailsPage: React.FC = () => {
     if (!id) return;
     setIsRegistering(true);
     try {
-      const res = await registrationService.joinTeam(id, joinCode);
+      const res = await teamService.joinTeam(id, joinCode);
       if (res.data.success) {
         setShowTeamModal(false);
-        setExistingRegistration(res.data.registration);
         setActionMessage({ text: res.data.message, isError: false });
-        confetti({ particleCount: 70, spread: 60 });
+        confetti({ particleCount: 80, spread: 70 });
         await fetchEventData();
       }
     } catch (err: any) {
@@ -325,6 +341,48 @@ export const EventDetailsPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Team Dashboard & Submission Card (if registered in a team) */}
+            {event.isTeamEvent && myTeam && (
+              <TeamDashboardCard
+                eventId={event._id}
+                maxTeamSize={event.maxTeamSize || event.teamMaxSize || 4}
+                currentUser={user}
+                team={myTeam}
+                submission={myTeam.submission || null}
+                onRefresh={fetchEventData}
+              />
+            )}
+
+            {/* Organizer / Admin: Registered Teams Overview */}
+            {(role === 'organizer' || role === 'admin') && event.isTeamEvent && allEventTeams.length > 0 && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Users className="h-5 w-5 text-indigo-600" />
+                    Participating Teams ({allEventTeams.length})
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {allEventTeams.map((t) => (
+                    <div key={t.id || t._id} className="rounded-xl border border-slate-100 bg-slate-50/50 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">{t.name}</span>
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                          {t.members?.length || 1} members
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">Leader: {t.leaderName || t.leader?.name || 'N/A'}</p>
+                      {t.submission && (
+                        <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                          ✓ Deliverable Submitted: {t.submission.fileName || t.submission.title}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Organizer Card */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
@@ -434,15 +492,42 @@ export const EventDetailsPage: React.FC = () => {
                   /* 3. Student Registration Options */
                   <div className="space-y-2">
                     {event.isTeamEvent ? (
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        className="w-full"
-                        onClick={() => setShowTeamModal(true)}
-                        leftIcon={<Users className="h-4 w-4" />}
-                      >
-                        Register as a Team
-                      </Button>
+                      myTeam ? (
+                        <div className="space-y-3">
+                          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 text-center dark:border-purple-900/60 dark:bg-purple-950/40 space-y-1.5">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-300">
+                              <Users className="h-4 w-4" /> Team Registered
+                            </span>
+                            <p className="text-sm font-extrabold text-slate-900 dark:text-white">
+                              {myTeam.name}
+                            </p>
+                            <p className="text-[11px] text-purple-600 dark:text-purple-400">
+                              Invite Code: <span className="font-mono font-bold tracking-wider">{myTeam.inviteCode}</span>
+                            </p>
+                          </div>
+                          {existingRegistration && (
+                            <Button
+                              variant="secondary"
+                              size="md"
+                              className="w-full"
+                              onClick={() => setShowTicketModal(true)}
+                              leftIcon={<QrCode className="h-4 w-4" />}
+                            >
+                              View Team Pass
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          className="w-full"
+                          onClick={() => setShowTeamModal(true)}
+                          leftIcon={<Users className="h-4 w-4" />}
+                        >
+                          Create or Join Team
+                        </Button>
+                      )
                     ) : (
                       <Button
                         variant="primary"

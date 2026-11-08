@@ -245,6 +245,50 @@ export const initSchema = async () => {
       `ALTER TABLE announcements ADD CONSTRAINT chk_announcements_title_len CHECK (length(trim(title)) >= 3 AND length(trim(title)) <= 200);`,
       `ALTER TABLE announcements ADD CONSTRAINT chk_announcements_msg_len CHECK (length(message) <= 2000);`,
       `ALTER TABLE event_registrations ADD CONSTRAINT chk_registrations_team_name CHECK (team_name IS NULL OR length(team_name) <= 100);`,
+      `ALTER TABLE events ADD COLUMN IF NOT EXISTS is_team_event BOOLEAN DEFAULT false;`,
+      `ALTER TABLE events ADD COLUMN IF NOT EXISTS max_team_size INT DEFAULT 4;`,
+      `ALTER TABLE events ADD COLUMN IF NOT EXISTS team_size_min INT DEFAULT 1;`,
+      `ALTER TABLE events ADD COLUMN IF NOT EXISTS team_size_max INT DEFAULT 4;`,
+      `CREATE TABLE IF NOT EXISTS teams (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        leader_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        invite_code VARCHAR(20) UNIQUE NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );`,
+      `CREATE TABLE IF NOT EXISTS team_members (
+        id VARCHAR(36) PRIMARY KEY,
+        team_id VARCHAR(36) NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(20) NOT NULL CHECK (role IN ('Leader', 'Member')) DEFAULT 'Member',
+        joined_at TIMESTAMPTZ DEFAULT NOW(),
+        CONSTRAINT unique_team_user UNIQUE (team_id, user_id)
+      );`,
+      `CREATE TABLE IF NOT EXISTS submissions (
+        id VARCHAR(36) PRIMARY KEY,
+        team_id VARCHAR(36) REFERENCES teams(id) ON DELETE CASCADE,
+        event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+        title VARCHAR(200) NOT NULL,
+        description TEXT DEFAULT '',
+        file_url TEXT NOT NULL,
+        file_type VARCHAR(50) NOT NULL,
+        file_name VARCHAR(255) DEFAULT '',
+        file_size INT DEFAULT 0,
+        github_url TEXT DEFAULT '',
+        figma_url TEXT DEFAULT '',
+        submitted_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_teams_event ON teams(event_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_teams_leader ON teams(leader_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_teams_code ON teams(invite_code);`,
+      `CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_submissions_team ON submissions(team_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_submissions_event ON submissions(event_id);`,
       // Safe targeted purge of legacy seed dummy events on Neon
       `DELETE FROM events WHERE title IN ('AI Horizon 2026: 36-Hour National Hackathon', 'Mastering Cloud-Native Microservices with Kubernetes', 'CyberDefend 2026: Campus Capture The Flag (CTF)', 'RoboWars 2026: Autonomous Combat Arena & Drone Racing', 'Tarang 2026: Annual University Cultural & Musical Odyssey') AND organizer_email = 'organizer@college.edu';`,
       `DELETE FROM announcements WHERE title = 'Hacker Guide & API Keys Released';`,
@@ -517,9 +561,10 @@ export const mapEvent = (row) => {
     prerequisites: row.prerequisites || 'None',
     rejectionReason: row.rejection_reason || '',
     isTeamEvent: !!row.is_team_event,
+    maxTeamSize: Number(row.max_team_size || row.team_size_max) || 4,
     teamSize: {
       min: row.team_size_min || 1,
-      max: row.team_size_max || 4,
+      max: row.team_size_max || row.max_team_size || 4,
     },
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -646,6 +691,78 @@ export const mapNotification = (row) => {
     link: row.link || '',
     isRead: !!row.is_read,
     createdAt: row.created_at,
+  };
+};
+
+export const mapTeamMember = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: row.id,
+    teamId: row.team_id,
+    userId: row.user_id,
+    role: row.role || 'Member',
+    joinedAt: row.joined_at,
+    user: row.user_name ? {
+      id: row.user_id,
+      _id: row.user_id,
+      name: row.user_name,
+      email: row.user_email,
+      studentId: row.user_student_id,
+      department: row.user_department,
+      phone: row.user_phone,
+      avatar: row.user_avatar,
+    } : undefined,
+  };
+};
+
+export const mapSubmission = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: row.id,
+    teamId: row.team_id,
+    eventId: row.event_id,
+    userId: row.user_id,
+    title: row.title,
+    description: row.description || '',
+    fileUrl: row.file_url,
+    fileType: row.file_type,
+    fileName: row.file_name || '',
+    fileSize: Number(row.file_size) || 0,
+    githubUrl: row.github_url || '',
+    figmaUrl: row.figma_url || '',
+    submittedAt: row.submitted_at,
+    updatedAt: row.updated_at,
+    teamName: row.team_name,
+    submitterName: row.submitter_name,
+  };
+};
+
+export const mapTeam = (row, members = [], submission = null) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: row.id,
+    name: row.name,
+    teamName: row.name,
+    leaderId: row.leader_id,
+    eventId: row.event_id,
+    inviteCode: row.invite_code,
+    leader: row.leader_name ? {
+      id: row.leader_id,
+      _id: row.leader_id,
+      name: row.leader_name,
+      email: row.leader_email,
+      studentId: row.leader_student_id,
+      department: row.leader_department,
+      avatar: row.leader_avatar,
+    } : undefined,
+    members: Array.isArray(members) ? members.map(mapTeamMember) : [],
+    memberCount: Array.isArray(members) ? members.length : 0,
+    submission: submission ? mapSubmission(submission) : null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 };
 

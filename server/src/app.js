@@ -13,6 +13,8 @@ import certificateRoutes from './routes/certificateRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import teamRoutes from './routes/teamRoutes.js';
+import submissionRoutes from './routes/submissionRoutes.js';
 
 dotenv.config();
 
@@ -36,8 +38,8 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
@@ -75,6 +77,8 @@ app.use(['/api/certificates', '/certificates'], certificateRoutes);
 app.use(['/api/admin', '/admin'], adminRoutes);
 app.use(['/api/announcements', '/announcements'], announcementRoutes);
 app.use(['/api/notifications', '/notifications'], notificationRoutes);
+app.use(['/api/teams', '/teams'], teamRoutes);
+app.use(['/api/submissions', '/submissions'], submissionRoutes);
 
 // 404 Handler for undefined API routes
 app.use(['/api/*', '/api'], (req, res) => {

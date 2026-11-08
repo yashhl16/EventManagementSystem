@@ -71,6 +71,7 @@ export interface CollegeEvent {
   isTeamEvent: boolean;
   teamMinSize?: number;
   teamMaxSize?: number;
+  maxTeamSize?: number;
   status: EventStatus;
   rejectionReason?: string;
   tags: string[];
@@ -182,3 +183,52 @@ export interface AdminStats {
   monthlyRegistrations: { month: string; registrations: number; attended: number }[];
   recentLogs: AuditLogItem[];
 }
+
+export interface TeamMember {
+  id: string;
+  _id?: string;
+  teamId: string;
+  userId: string;
+  role: 'Leader' | 'Member';
+  joinedAt: string;
+  user?: Partial<User>;
+}
+
+export interface Submission {
+  id: string;
+  _id?: string;
+  teamId?: string;
+  eventId: string;
+  userId?: string;
+  title: string;
+  description?: string;
+  fileUrl: string;
+  fileType: string;
+  fileName?: string;
+  fileSize?: number;
+  githubUrl?: string;
+  figmaUrl?: string;
+  submittedAt: string;
+  updatedAt?: string;
+  teamName?: string;
+  submitterName?: string;
+}
+
+export interface Team {
+  id: string;
+  _id?: string;
+  name: string;
+  teamName?: string;
+  leaderId: string;
+  leaderName?: string;
+  eventId: string;
+  inviteCode: string;
+  createdAt: string;
+  updatedAt?: string;
+  leader?: Partial<User>;
+  members?: TeamMember[];
+  memberCount?: number;
+  submission?: Submission | null;
+  hasSubmission?: boolean;
+}
+

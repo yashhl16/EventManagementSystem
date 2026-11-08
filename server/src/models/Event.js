@@ -116,6 +116,10 @@ const eventSchema = new mongoose.Schema(
       type: Number,
       default: 4,
     },
+    maxTeamSize: {
+      type: Number,
+      default: 4,
+    },
     status: {
       type: String,
       enum: ['pending_approval', 'approved', 'rejected', 'cancelled', 'completed'],
