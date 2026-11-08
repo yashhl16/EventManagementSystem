@@ -1,4 +1,6 @@
 import React from 'react';
+import { CollegeEvent } from '../../types';
+import { calculateEventStatus } from '../../utils/eventStatus';
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -84,3 +86,55 @@ export const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
       return <Badge variant="secondary">{status}</Badge>;
   }
 };
+
+export const EventLifecycleBadge: React.FC<{
+  event?: Partial<CollegeEvent> | null;
+  status?: string;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}> = ({ event, status, size = 'sm', className = '' }) => {
+  const currentStatus = (status || (event ? calculateEventStatus(event) : 'Upcoming')).toLowerCase();
+
+  const sizeStyles = {
+    sm: 'px-2.5 py-0.5 text-[11px]',
+    md: 'px-3 py-1 text-xs font-semibold',
+    lg: 'px-3.5 py-1.5 text-sm font-semibold',
+  };
+
+  switch (currentStatus) {
+    case 'ongoing':
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-100 font-bold text-sky-800 shadow-sm backdrop-blur-md dark:border-sky-700/60 dark:bg-sky-950/80 dark:text-sky-300 ${sizeStyles[size]} ${className}`}
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75"></span>
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500"></span>
+          </span>
+          <span>Ongoing</span>
+        </span>
+      );
+    case 'completed':
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100/90 font-medium text-slate-700 shadow-sm backdrop-blur-md dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300 ${sizeStyles[size]} ${className}`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+          <span>Completed</span>
+        </span>
+      );
+    case 'upcoming':
+    default:
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-100 font-bold text-emerald-800 shadow-sm backdrop-blur-md dark:border-emerald-700/60 dark:bg-emerald-950/80 dark:text-emerald-300 ${sizeStyles[size]} ${className}`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <span>Upcoming</span>
+        </span>
+      );
+  }
+};
+
+export const EventStatusBadge = EventLifecycleBadge;
+

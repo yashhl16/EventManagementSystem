@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Registration } from '../../types';
 import { registrationService } from '../../services/api';
-import { StatusBadge, CategoryBadge } from '../../components/common/Badge';
+import { StatusBadge, CategoryBadge, EventLifecycleBadge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { TicketPassModal } from '../../components/tickets/TicketPassModal';
 import { CertificateModal } from '../../components/certificates/CertificateModal';
@@ -171,6 +171,7 @@ export const MyRegistrationsPage: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <CategoryBadge category={event.category} />
+                      <EventLifecycleBadge event={event} />
                       <StatusBadge status={reg.status} />
                       {reg.teamName && (
                         <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:bg-purple-950 dark:text-purple-300">

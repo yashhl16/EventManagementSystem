@@ -11,7 +11,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { CollegeEvent } from '../../types';
-import { CategoryBadge, StatusBadge } from '../common/Badge';
+import { CategoryBadge, StatusBadge, EventLifecycleBadge } from '../common/Badge';
+import { calculateEventStatus } from '../../utils/eventStatus';
 
 interface EventCardProps {
   event: CollegeEvent;
@@ -37,6 +38,9 @@ export const EventCard: React.FC<EventCardProps> = ({
     Math.round(((event.registeredCount || 0) / event.maxCapacity) * 100)
   );
   const isFull = availableSeats === 0;
+  const lifecycleStatus = calculateEventStatus(event);
+  const isCompleted = lifecycleStatus === 'Completed';
+  const isOngoing = lifecycleStatus === 'Ongoing';
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-all duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
@@ -62,8 +66,9 @@ export const EventCard: React.FC<EventCardProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
 
         {/* Badges on Banner */}
-        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+        <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
           <CategoryBadge category={event.category} />
+          <EventLifecycleBadge event={event} />
           {event.isTeamEvent && (
             <span className="rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
               Team of {event.teamMinSize}-{event.teamMaxSize}
@@ -89,7 +94,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           <span>{formattedDate}</span>
           <span>•</span>
           <Clock className="h-3.5 w-3.5" />
-          <span>{event.startTime}</span>
+          <span>{event.startTime}{event.endTime ? ` - ${event.endTime}` : ''}</span>
         </div>
       </div>
 
@@ -141,7 +146,13 @@ export const EventCard: React.FC<EventCardProps> = ({
             to={`/events/${event._id}`}
             className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-800 transition-colors hover:bg-indigo-600 hover:text-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-indigo-600 dark:hover:text-white"
           >
-            <span>View Details & Register</span>
+            <span>
+              {isCompleted
+                ? 'View Details (Completed)'
+                : isOngoing
+                ? 'Live Now • View Details'
+                : 'View Details & Register'}
+            </span>
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>

@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { eventService } from '../../services/api';
-import { CategoryBadge } from '../../components/common/Badge';
+import { CategoryBadge, EventLifecycleBadge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 
 export const StudentCalendarPage: React.FC = () => {
@@ -194,7 +194,10 @@ export const StudentCalendarPage: React.FC = () => {
                 />
               )}
 
-              <CategoryBadge category={selectedEvent.category} />
+              <div className="flex flex-wrap items-center gap-2">
+                <CategoryBadge category={selectedEvent.category} />
+                <EventLifecycleBadge event={selectedEvent} />
+              </div>
 
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                 {selectedEvent.title}

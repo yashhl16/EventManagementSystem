@@ -19,7 +19,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { CollegeEvent, Registration } from '../../types';
 import { eventService, registrationService } from '../../services/api';
-import { CategoryBadge, StatusBadge } from '../../components/common/Badge';
+import { CategoryBadge, StatusBadge, EventLifecycleBadge } from '../../components/common/Badge';
+import { calculateEventStatus } from '../../utils/eventStatus';
 import { Button } from '../../components/common/Button';
 import { ConflictAlertModal } from '../../components/events/ConflictAlertModal';
 import { TeamRegisterModal } from '../../components/events/TeamRegisterModal';
@@ -202,8 +203,9 @@ export const EventDetailsPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
 
           {/* Badges on Top */}
-          <div className="absolute top-6 left-6 flex flex-wrap gap-2">
+          <div className="absolute top-6 left-6 flex flex-wrap items-center gap-2">
             <CategoryBadge category={event.category} />
+            <EventLifecycleBadge event={event} size="md" />
             <span
               className={`rounded-full px-3 py-1 text-xs font-bold backdrop-blur-md ${
                 event.isPaid ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
@@ -414,6 +416,11 @@ export const EventDetailsPage: React.FC = () => {
                     >
                       View QR Entry Pass
                     </Button>
+                  </div>
+                ) : calculateEventStatus(event) === 'Completed' ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300 font-medium space-y-1">
+                    <p className="font-bold text-slate-900 dark:text-white">Event Concluded</p>
+                    <p className="text-[11px] text-slate-500">This event has completed. Registrations are closed.</p>
                   </div>
                 ) : !isAuthenticated ? (
                   /* 2. Unauthenticated */

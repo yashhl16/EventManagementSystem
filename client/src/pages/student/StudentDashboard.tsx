@@ -18,6 +18,7 @@ import { EventFilters } from '../../components/events/EventFilters';
 import { StatCard } from '../../components/common/StatCard';
 import { EventCardSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState } from '../../components/common/EmptyState';
+import { calculateEventStatus } from '../../utils/eventStatus';
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -39,6 +40,18 @@ export const StudentDashboard: React.FC = () => {
   const [category, setCategory] = useState('All');
   const [price, setPrice] = useState('all');
   const [venueType, setVenueType] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'ongoing' | 'completed'>('all');
+
+  const statusCounts = React.useMemo(() => {
+    const counts = { all: allEvents.length, upcoming: 0, ongoing: 0, completed: 0 };
+    allEvents.forEach((evt) => {
+      const st = calculateEventStatus(evt).toLowerCase() as 'upcoming' | 'ongoing' | 'completed';
+      if (counts[st] !== undefined) {
+        counts[st]++;
+      }
+    });
+    return counts;
+  }, [allEvents]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -79,6 +92,11 @@ export const StudentDashboard: React.FC = () => {
 
   // Filter events dynamically
   const filteredEvents = allEvents.filter((event) => {
+    const eventLifecycle = calculateEventStatus(event).toLowerCase();
+    if (statusFilter !== 'all' && eventLifecycle !== statusFilter) {
+      return false;
+    }
+
     const matchesSearch =
       !search ||
       event.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -272,9 +290,41 @@ export const StudentDashboard: React.FC = () => {
               Discover All College Events
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Filter by department, category, format, and pricing
+              Filter by status, department, category, format, and pricing
             </p>
           </div>
+        </div>
+
+        {/* Status Filter Tabs (All, Upcoming, Ongoing, Completed) */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 dark:border-slate-800">
+          {[
+            { id: 'all', label: 'All Events', count: statusCounts.all, badgeClass: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+            { id: 'upcoming', label: 'Upcoming', count: statusCounts.upcoming, badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' },
+            { id: 'ongoing', label: 'Ongoing', count: statusCounts.ongoing, badgeClass: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300' },
+            { id: 'completed', label: 'Completed', count: statusCounts.completed, badgeClass: 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400' },
+          ].map((tab) => {
+            const isActive = statusFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setStatusFilter(tab.id as any)}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-none'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                    isActive ? 'bg-white/20 text-white' : tab.badgeClass
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Filter Widget */}
@@ -292,6 +342,7 @@ export const StudentDashboard: React.FC = () => {
             setCategory('All');
             setPrice('all');
             setVenueType('all');
+            setStatusFilter('all');
           }}
         />
 
@@ -304,11 +355,39 @@ export const StudentDashboard: React.FC = () => {
           </div>
         ) : filteredEvents.length === 0 ? (
           <EmptyState
-            title="No events available right now. Please check back later."
+            title={
+              allEvents.length === 0
+                ? "No events available right now. Please check back later."
+                : statusFilter === 'upcoming'
+                ? "No upcoming events found"
+                : statusFilter === 'ongoing'
+                ? "No ongoing events currently in progress"
+                : statusFilter === 'completed'
+                ? "No completed events found"
+                : "No events match your filter criteria"
+            }
             description={
               allEvents.length === 0
                 ? "Check back soon for upcoming campus activities and hackathons."
+                : statusFilter !== 'all'
+                ? `There are currently no events matching the '${statusFilter}' status. Try selecting another tab.`
                 : "No events match your filter criteria. Try loosening your filters or searching for different keywords."
+            }
+            action={
+              statusFilter !== 'all' || search || category !== 'All' ? (
+                <button
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setSearch('');
+                    setCategory('All');
+                    setPrice('all');
+                    setVenueType('all');
+                  }}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 cursor-pointer"
+                >
+                  View All Events
+                </button>
+              ) : undefined
             }
           />
         ) : (

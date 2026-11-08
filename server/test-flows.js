@@ -1,5 +1,6 @@
+process.env.NODE_ENV = 'test';
 import app from './src/app.js';
-import { connectDB, closeDB } from './src/config/db.js';
+import { connectDB, closeDB, computeEventTimestamps } from './src/config/db.js';
 import { seedDatabase } from './src/config/seed.js';
 
 const TEST_PORT = 5055;
@@ -861,6 +862,96 @@ async function runTests() {
     assert(
       organizerFutureEventRes.status === 201 && organizerFutureEventData.success && organizerFutureEventData.event,
       `Test Case 21: Organizer event scheduled for future date (${futureDateIST}) accepted with 201 Created`
+    );
+
+    // TEST CASE 22: Event objects return startDate, endDate, and eventStatus
+    const createdEvent = organizerFutureEventData.event;
+    assert(
+      createdEvent.startDate && createdEvent.endDate && createdEvent.eventStatus,
+      'Test Case 22: Event payload returned by API contains startDate, endDate, and eventStatus fields'
+    );
+
+    // TEST CASE 23: Future event dynamically evaluated as 'Upcoming'
+    assert(
+      createdEvent.eventStatus === 'Upcoming',
+      `Test Case 23: Event scheduled for future date (${futureDateIST}) evaluates to eventStatus === 'Upcoming'`
+    );
+
+    // TEST CASE 24: Direct verification of target status comparison logic:
+    // Upcoming:  currentTime < startDate
+    // Ongoing:   currentTime >= startDate && currentTime <= endDate
+    // Completed: currentTime > endDate
+    const currentTestTime = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const todayStr = `${currentTestTime.getFullYear()}-${pad(currentTestTime.getMonth() + 1)}-${pad(currentTestTime.getDate())}`;
+
+    // Test past event -> Completed
+    const pastCheck = computeEventTimestamps('2024-01-01', '10:00', '12:00', 'approved');
+    assert(
+      pastCheck.eventStatus === 'Completed',
+      "Test Case 24a: Past event (currentTime > endDate) calculates as 'Completed'"
+    );
+
+    // Test future event -> Upcoming
+    const futureCheck = computeEventTimestamps('2029-12-31', '10:00', '12:00', 'approved');
+    assert(
+      futureCheck.eventStatus === 'Upcoming',
+      "Test Case 24b: Future event (currentTime < startDate) calculates as 'Upcoming'"
+    );
+
+    // Test currently active window -> Ongoing
+    const currentStartHour = pad(Math.max(0, currentTestTime.getHours() - 1));
+    const currentEndHour = pad(Math.min(23, currentTestTime.getHours() + 1));
+    const ongoingCheck = computeEventTimestamps(todayStr, `${currentStartHour}:00`, `${currentEndHour}:59`, 'approved');
+    assert(
+      ongoingCheck.eventStatus === 'Ongoing',
+      "Test Case 24c: In-progress event (currentTime >= startDate && currentTime <= endDate) calculates as 'Ongoing'"
+    );
+
+    // TEST CASE 25: Verify all previously enforced VARCHAR and phone constraints remain active
+    const checkLongNameRes = await fetch(`${BASE_URL}/auth/student/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'A'.repeat(61),
+        email: 'validname61@college.edu',
+        password: 'ValidPassword@123',
+        phone: '9876543210',
+      }),
+    });
+    assert(
+      checkLongNameRes.status === 400,
+      'Test Case 25a: Student registration with name > 60 chars continues to be rejected with 400 Bad Request'
+    );
+
+    const checkLongEmailRes = await fetch(`${BASE_URL}/auth/student/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Valid Student Name',
+        email: `${'a'.repeat(50)}@college.edu`,
+        password: 'ValidPassword@123',
+        phone: '9876543210',
+      }),
+    });
+    assert(
+      checkLongEmailRes.status === 400,
+      'Test Case 25b: Student registration with email > 60 chars continues to be rejected with 400 Bad Request'
+    );
+
+    const checkInvalidPhoneRes = await fetch(`${BASE_URL}/auth/student/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Valid Student Name',
+        email: 'studentvalidphone@college.edu',
+        password: 'ValidPassword@123',
+        phone: '987654321', // 9 digits
+      }),
+    });
+    assert(
+      checkInvalidPhoneRes.status === 400,
+      'Test Case 25c: Student registration with 9-digit phone continues to be rejected with 400 Bad Request'
     );
 
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);

@@ -36,6 +36,8 @@ export type EventStatus =
   | 'cancelled'
   | 'completed';
 
+export type EventLifecycleStatus = 'Upcoming' | 'Ongoing' | 'Completed';
+
 export interface CollegeEvent {
   _id: string;
   id?: string;
@@ -46,6 +48,9 @@ export interface CollegeEvent {
   eventDate: string;
   startTime: string;
   endTime: string;
+  startDate?: string;
+  endDate?: string;
+  eventStatus?: EventLifecycleStatus | string;
   venue: string;
   venueType: 'offline' | 'online' | 'hybrid';
   meetingUrl?: string;

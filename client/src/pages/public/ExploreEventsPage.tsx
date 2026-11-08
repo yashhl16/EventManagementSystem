@@ -9,6 +9,7 @@ import { EventCardSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
+import { calculateEventStatus } from '../../utils/eventStatus';
 
 export const ExploreEventsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,6 +21,7 @@ export const ExploreEventsPage: React.FC = () => {
   const [category, setCategory] = useState(searchParams.get('category') || 'All');
   const [price, setPrice] = useState(searchParams.get('price') || 'all');
   const [venueType, setVenueType] = useState(searchParams.get('venueType') || 'all');
+  const [status, setStatus] = useState(searchParams.get('status') || 'all');
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -51,8 +53,17 @@ export const ExploreEventsPage: React.FC = () => {
     setCategory('All');
     setPrice('all');
     setVenueType('all');
+    setStatus('all');
     setSearchParams({});
   };
+
+  const filteredEvents = events.filter((evt) => {
+    if (status !== 'all') {
+      const evtStatus = calculateEventStatus(evt).toLowerCase();
+      if (evtStatus !== status) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -84,6 +95,8 @@ export const ExploreEventsPage: React.FC = () => {
           onPriceChange={setPrice}
           selectedVenueType={venueType}
           onVenueTypeChange={setVenueType}
+          selectedStatus={status}
+          onStatusChange={setStatus}
           onReset={handleReset}
         />
 
@@ -94,16 +107,16 @@ export const ExploreEventsPage: React.FC = () => {
               <EventCardSkeleton key={i} />
             ))}
           </div>
-        ) : events.length === 0 ? (
+        ) : filteredEvents.length === 0 ? (
           <EmptyState
             title="No events available right now. Please check back later."
             description={
-              search || category !== 'All' || price !== 'all' || venueType !== 'all'
-                ? "No events match your filter criteria. Try resetting category or search filters."
+              search || category !== 'All' || price !== 'all' || venueType !== 'all' || status !== 'all'
+                ? "No events match your filter criteria. Try resetting category, status, or search filters."
                 : "Check back soon for upcoming campus hackathons, technical workshops, and fests."
             }
             action={
-              (search || category !== 'All' || price !== 'all' || venueType !== 'all') ? (
+              (search || category !== 'All' || price !== 'all' || venueType !== 'all' || status !== 'all') ? (
                 <button
                   onClick={handleReset}
                   className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 cursor-pointer"
@@ -115,7 +128,7 @@ export const ExploreEventsPage: React.FC = () => {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event) => (
+            {filteredEvents.map((event) => (
               <EventCard key={event._id} event={event} />
             ))}
           </div>

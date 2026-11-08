@@ -11,6 +11,8 @@ interface EventFiltersProps {
   onPriceChange: (price: string) => void;
   selectedVenueType: string;
   onVenueTypeChange: (type: string) => void;
+  selectedStatus?: string;
+  onStatusChange?: (status: string) => void;
   onReset: () => void;
 }
 
@@ -34,10 +36,16 @@ export const EventFilters: React.FC<EventFiltersProps> = ({
   onPriceChange,
   selectedVenueType,
   onVenueTypeChange,
+  selectedStatus,
+  onStatusChange,
   onReset,
 }) => {
   const hasActiveFilters =
-    search || selectedCategory !== 'All' || selectedPrice !== 'all' || selectedVenueType !== 'all';
+    search ||
+    selectedCategory !== 'All' ||
+    selectedPrice !== 'all' ||
+    selectedVenueType !== 'all' ||
+    (selectedStatus && selectedStatus !== 'all');
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -107,6 +115,20 @@ export const EventFilters: React.FC<EventFiltersProps> = ({
             <option value="online">Online / Virtual</option>
             <option value="hybrid">Hybrid</option>
           </select>
+
+          {/* Status Filter */}
+          {onStatusChange && (
+            <select
+              value={selectedStatus || 'all'}
+              onChange={(e) => onStatusChange(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+            >
+              <option value="all">Status: All</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="completed">Completed</option>
+            </select>
+          )}
         </div>
 
         {hasActiveFilters && (

@@ -406,8 +406,81 @@ export const mapUser = (row) => {
   };
 };
 
+export const computeEventTimestamps = (eventDateVal, startTimeStr, endTimeStr, rawStatus) => {
+  const pad = (n) => String(n).padStart(2, '0');
+  let dateStr = '';
+  if (eventDateVal instanceof Date) {
+    const year = eventDateVal.getFullYear();
+    const month = pad(eventDateVal.getMonth() + 1);
+    const day = pad(eventDateVal.getDate());
+    dateStr = `${year}-${month}-${day}`;
+  } else if (typeof eventDateVal === 'string') {
+    dateStr = eventDateVal.split('T')[0];
+  }
+
+  const parseTime = (timeStr, defaultTime) => {
+    const raw = (timeStr && timeStr.trim().length > 0 ? timeStr : defaultTime).trim();
+    const ampmMatch = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+    let hours = 0;
+    let minutes = 0;
+    let seconds = 0;
+    if (ampmMatch) {
+      hours = parseInt(ampmMatch[1], 10);
+      minutes = parseInt(ampmMatch[2], 10);
+      seconds = ampmMatch[3] ? parseInt(ampmMatch[3], 10) : 0;
+      const modifier = ampmMatch[4]?.toUpperCase();
+      if (modifier === 'PM' && hours < 12) hours += 12;
+      else if (modifier === 'AM' && hours === 12) hours = 0;
+    } else {
+      const parts = raw.split(':');
+      hours = parseInt(parts[0], 10) || 0;
+      minutes = parseInt(parts[1], 10) || 0;
+      seconds = parseInt(parts[2], 10) || 0;
+    }
+    if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const iso = `${dateStr}T${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+      const d = new Date(iso);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return null;
+  };
+
+  const startDate = parseTime(startTimeStr, '00:00');
+  let endDate = parseTime(endTimeStr, '23:59:59');
+  if (startDate && (!endDate || endDate <= startDate)) {
+    endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+  }
+
+  let eventStatus = 'Upcoming';
+  if (rawStatus === 'completed') {
+    eventStatus = 'Completed';
+  } else if (startDate && endDate) {
+    const now = new Date().getTime();
+    if (now < startDate.getTime()) {
+      eventStatus = 'Upcoming';
+    } else if (now >= startDate.getTime() && now <= endDate.getTime()) {
+      eventStatus = 'Ongoing';
+    } else {
+      eventStatus = 'Completed';
+    }
+  }
+
+  return {
+    dateStr,
+    startDate: startDate ? startDate.toISOString() : null,
+    endDate: endDate ? endDate.toISOString() : null,
+    eventStatus,
+  };
+};
+
 export const mapEvent = (row) => {
   if (!row) return null;
+  const { dateStr, startDate, endDate, eventStatus } = computeEventTimestamps(
+    row.event_date,
+    row.start_time,
+    row.end_time,
+    row.status
+  );
   return {
     _id: row.id,
     id: row.id,
@@ -415,9 +488,12 @@ export const mapEvent = (row) => {
     description: row.description,
     category: row.category,
     bannerImage: row.banner_image,
-    eventDate: row.event_date ? (row.event_date.toISOString ? row.event_date.toISOString().split('T')[0] : row.event_date) : '',
+    eventDate: dateStr || (row.event_date ? (row.event_date.toISOString ? row.event_date.toISOString().split('T')[0] : String(row.event_date).split('T')[0]) : ''),
     startTime: row.start_time,
     endTime: row.end_time,
+    startDate,
+    endDate,
+    eventStatus,
     venue: row.venue,
     venueType: row.venue_type,
     meetingUrl: row.meeting_url || '',
@@ -452,6 +528,10 @@ export const mapEvent = (row) => {
 
 export const mapRegistration = (row) => {
   if (!row) return null;
+  const eventTimestamps = row.event_date
+    ? computeEventTimestamps(row.event_date, row.event_start_time, row.event_end_time, row.event_status)
+    : { startDate: null, endDate: null, eventStatus: 'Upcoming' };
+
   return {
     _id: row.id,
     id: row.id,
@@ -464,6 +544,9 @@ export const mapRegistration = (row) => {
       eventDate: row.event_date ? (row.event_date.toISOString ? row.event_date.toISOString().split('T')[0] : row.event_date) : '',
       startTime: row.event_start_time,
       endTime: row.event_end_time,
+      startDate: eventTimestamps.startDate,
+      endDate: eventTimestamps.endDate,
+      eventStatus: eventTimestamps.eventStatus,
       venue: row.event_venue,
       bannerImage: row.event_banner,
       status: row.event_status,
