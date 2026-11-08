@@ -46,27 +46,31 @@ export const submitDeliverable = async (req, res) => {
       return res.status(400).json({ success: false, message: fileCheck.message });
     }
 
-    // 4. Determine Team or Individual context
+    // 4. Verify Registration & Determine Team or Individual context
+    const regRes = await query(
+      `SELECT * FROM event_registrations WHERE user_id = $1 AND event_id = $2 AND status != 'cancelled' LIMIT 1`,
+      [userId, eventId]
+    );
+
     let teamId = null;
     let teamName = '';
 
-    if (event.is_team_event) {
-      const teamRes = await query(
-        `SELECT t.id, t.name FROM team_members tm
-         JOIN teams t ON tm.team_id = t.id
-         WHERE tm.user_id = $1 AND t.event_id = $2
-         LIMIT 1`,
-        [userId, eventId]
-      );
+    const teamRes = await query(
+      `SELECT t.id, t.name FROM team_members tm
+       JOIN teams t ON tm.team_id = t.id
+       WHERE tm.user_id = $1 AND t.event_id = $2
+       LIMIT 1`,
+      [userId, eventId]
+    );
 
-      if (teamRes.rows.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'You must form or join a team before submitting deliverables for this team-based event.',
-        });
-      }
+    if (teamRes.rows.length > 0) {
       teamId = teamRes.rows[0].id;
       teamName = teamRes.rows[0].name;
+    } else if (regRes.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'You must register for this event before submitting project deliverables.',
+      });
     }
 
     // 5. Safely store file (Supabase, Vercel Blob, or resilient database store)

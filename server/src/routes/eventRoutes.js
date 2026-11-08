@@ -11,6 +11,10 @@ import {
   cancelEvent,
   getMyOrganizedEvents,
 } from '../controllers/eventController.js';
+import {
+  submitDeliverable,
+  getMySubmission,
+} from '../controllers/submissionController.js';
 import teamRoutes from './teamRoutes.js';
 import submissionRoutes from './submissionRoutes.js';
 import { protect, requireAnyRole } from '../middleware/auth.js';
@@ -20,6 +24,10 @@ const router = express.Router();
 // Mount Team and Submission sub-routes on events
 router.use('/:eventId/teams', teamRoutes);
 router.use('/:eventId/submissions', submissionRoutes);
+
+// Direct event deliverable submission endpoints
+router.post('/:eventId/submit', protect, submitDeliverable);
+router.get('/:eventId/my-submission', protect, getMySubmission);
 
 // Public routes
 router.get('/', getEvents);

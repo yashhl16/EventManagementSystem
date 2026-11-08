@@ -15,16 +15,18 @@ import {
   QrCode,
   ShieldCheck,
   UserCheck,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { CollegeEvent, Registration, Team, Submission } from '../../types';
-import { eventService, registrationService, teamService } from '../../services/api';
+import { eventService, registrationService, teamService, submissionService } from '../../services/api';
 import { CategoryBadge, StatusBadge, EventLifecycleBadge } from '../../components/common/Badge';
 import { calculateEventStatus } from '../../utils/eventStatus';
 import { Button } from '../../components/common/Button';
 import { ConflictAlertModal } from '../../components/events/ConflictAlertModal';
 import { TeamRegisterModal } from '../../components/events/TeamRegisterModal';
 import { TeamDashboardCard } from '../../components/events/TeamDashboardCard';
+import { EventSubmissionCard } from '../../components/events/EventSubmissionCard';
 import { TicketPassModal } from '../../components/tickets/TicketPassModal';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
@@ -37,6 +39,7 @@ export const EventDetailsPage: React.FC = () => {
 
   const [event, setEvent] = useState<CollegeEvent | null>(null);
   const [existingRegistration, setExistingRegistration] = useState<Registration | null>(null);
+  const [submission, setSubmission] = useState<Submission | null>(null);
   const [myTeam, setMyTeam] = useState<Team | null>(null);
   const [allEventTeams, setAllEventTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,10 +72,23 @@ export const EventDetailsPage: React.FC = () => {
           }
         }
 
+        // Fetch submission for this event
+        const subRes = await submissionService
+          .getMySubmission(id)
+          .catch(() => ({ data: { hasSubmitted: false, submission: null } }));
+        if (subRes.data?.hasSubmitted && subRes.data?.submission) {
+          setSubmission(subRes.data.submission);
+        } else {
+          setSubmission(null);
+        }
+
         // Fetch team information for team-based events
         const teamRes = await teamService.getMyTeam(id).catch(() => ({ data: { hasTeam: false, team: null } }));
         if (teamRes.data?.hasTeam && teamRes.data?.team) {
           setMyTeam(teamRes.data.team);
+          if (teamRes.data.team.submission && !subRes.data?.submission) {
+            setSubmission(teamRes.data.team.submission);
+          }
         } else {
           setMyTeam(null);
         }
@@ -341,17 +357,34 @@ export const EventDetailsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Team Dashboard & Submission Card (if registered in a team) */}
+            {/* Team Dashboard Card (if registered in a team) */}
             {event.isTeamEvent && myTeam && (
               <TeamDashboardCard
                 eventId={event._id}
                 maxTeamSize={event.maxTeamSize || event.teamMaxSize || 4}
                 currentUser={user}
                 team={myTeam}
-                submission={myTeam.submission || null}
+                submission={myTeam.submission || submission || null}
                 onRefresh={fetchEventData}
               />
             )}
+
+            {/* Event Deliverables & Project Submission Section */}
+            <EventSubmissionCard
+              eventId={event._id}
+              isRegistered={!!existingRegistration || !!myTeam}
+              submission={submission || myTeam?.submission || null}
+              onSubmissionSuccess={fetchEventData}
+              onRegisterClick={() => {
+                if (!isAuthenticated) {
+                  navigate('/student/login', { state: { from: window.location.pathname } });
+                } else if (event.isTeamEvent && !myTeam) {
+                  setShowTeamModal(true);
+                } else {
+                  handleRegisterIndividual(false);
+                }
+              }}
+            />
 
             {/* Organizer / Admin: Registered Teams Overview */}
             {(role === 'organizer' || role === 'admin') && event.isTeamEvent && allEventTeams.length > 0 && (
@@ -461,7 +494,7 @@ export const EventDetailsPage: React.FC = () => {
               <div className="space-y-3 pt-2">
                 {/* 1. Already Registered */}
                 {existingRegistration ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-center text-xs text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold">
                       ✓ You are {existingRegistration.status.toUpperCase()}
                     </div>
@@ -474,6 +507,39 @@ export const EventDetailsPage: React.FC = () => {
                     >
                       View QR Entry Pass
                     </Button>
+
+                    {/* Quick Deliverable Status in right sidebar */}
+                    <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-800/40 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <FileText className="h-3.5 w-3.5 text-indigo-500" /> Deliverables
+                        </span>
+                        {(submission || myTeam?.submission) ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            ✓ Submitted
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {(submission || myTeam?.submission)
+                          ? ((submission || myTeam?.submission)?.fileName || (submission || myTeam?.submission)?.title)
+                          : 'Presentation / Report (PPT, PDF, DOC)'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById('project-submission-card');
+                          el?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className="w-full rounded-lg bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition text-center"
+                      >
+                        {(submission || myTeam?.submission) ? 'View / Update Deliverables →' : 'Submit Project Deliverable →'}
+                      </button>
+                    </div>
                   </div>
                 ) : calculateEventStatus(event) === 'Completed' ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300 font-medium space-y-1">

@@ -1172,6 +1172,77 @@ async function runTests() {
       'Test Case 29b: Organizer retrieves deliverable submissions and external links for evaluation'
     );
 
+    // ========================================================
+    // TEST CASE 30: DIRECT /api/events/:eventId/submit & REGISTRATION GUARD
+    // ========================================================
+
+    // 30a: Unregistered user blocked from submitting deliverables
+    const unregisteredStudentEmail = `unreg_${Date.now()}@college.edu`;
+    const regResTemp = await fetch(`${BASE_URL}/auth/student/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Unregistered Candidate',
+        email: unregisteredStudentEmail,
+        password: 'Password@12345',
+        phone: '9876543200',
+        studentId: `UN-${Date.now().toString().slice(-4)}`,
+        department: 'Information Technology',
+      }),
+    });
+    const unregToken = (await regResTemp.json()).token;
+
+    const unregSubmitRes = await fetch(`${BASE_URL}/events/${hackathonId}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${unregToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Unregistered Attempt',
+        fileName: 'unregistered.pdf',
+        fileData: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+      }),
+    });
+    assert(
+      unregSubmitRes.status === 403,
+      'Test Case 30a: Direct /events/:eventId/submit blocks unregistered users with 403 Forbidden'
+    );
+
+    // 30b: Direct endpoint /events/:eventId/submit succeeds for confirmed registered student
+    const directSubmitRes = await fetch(`${BASE_URL}/events/${hackathonId}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Direct API Endpoint Verification',
+        description: 'Verifying seamless routing via /api/events/:eventId/submit.',
+        fileName: 'verified_deliverable.pdf',
+        fileData: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+      }),
+    });
+    const directSubmitData = await directSubmitRes.json();
+    assert(
+      (directSubmitRes.status === 200 || directSubmitRes.status === 201) &&
+        directSubmitData.success &&
+        directSubmitData.submission?.fileName === 'verified_deliverable.pdf',
+      'Test Case 30b: Direct /api/events/:eventId/submit successfully submits and updates deliverable'
+    );
+
+    // 30c: Direct /api/events/:eventId/my-submission endpoint returns submission
+    const getMySubDirect = await fetch(`${BASE_URL}/events/${hackathonId}/my-submission`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const getMySubDirectData = await getMySubDirect.json();
+    assert(
+      getMySubDirect.status === 200 &&
+        getMySubDirectData.hasSubmitted &&
+        getMySubDirectData.submission?.fileName === 'verified_deliverable.pdf',
+      'Test Case 30c: Direct /api/events/:eventId/my-submission retrieves current active submission'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

@@ -221,10 +221,10 @@ export const submissionService = {
       githubUrl?: string;
       figmaUrl?: string;
     }
-  ) => api.post(`/events/${eventId}/submissions`, data),
+  ) => api.post(`/events/${eventId}/submit`, data),
 
   getMySubmission: (eventId: string) =>
-    api.get(`/events/${eventId}/submissions/my-submission`),
+    api.get(`/events/${eventId}/my-submission`),
 
   getEventSubmissions: (eventId: string) =>
     api.get(`/events/${eventId}/submissions`),
