@@ -1427,6 +1427,142 @@ async function runTests() {
       'Test Case 32g: Certificate download endpoint streams printable certificate template via /api/certificates/download/:code'
     );
 
+    // ==========================================
+    // TEST CASE 33: Organizer QR Pass Scanner & Gatekeeper Verification Workflow
+    // ==========================================
+    // 33a: Create event and register attendee
+    const gatekeeperEventRes = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Smart India Hackathon (SIH) 2026 Grand Finale',
+        description: 'National software hackathon solving problems for ministries and departments.',
+        category: 'Hackathon',
+        eventDate: '2026-11-20',
+        startTime: '09:00',
+        endTime: '18:00',
+        venue: 'Campus Tech Center',
+        maxCapacity: 100,
+        registrationDeadline: '2026-11-19',
+        isTeamEvent: true,
+        maxTeamSize: 4,
+      }),
+    });
+    const gatekeeperEventData = await gatekeeperEventRes.json();
+    const gatekeeperEventId = gatekeeperEventData.event?.id || gatekeeperEventData.event?._id;
+    await fetch(`${BASE_URL}/admin/events/${gatekeeperEventId}/approve`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    // Student registers for SIH event
+    const gatekeeperRegRes = await fetch(`${BASE_URL}/registrations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({ eventId: gatekeeperEventId, bypassConflict: true }),
+    });
+    const gatekeeperRegData = await gatekeeperRegRes.json();
+    const gatekeeperTicketCode = gatekeeperRegData.registration?.ticketCode;
+    assert(
+      gatekeeperRegRes.status === 201 && !!gatekeeperTicketCode,
+      'Test Case 33a: Student registers for SIH event and receives entry pass ticketCode'
+    );
+
+    // 33b: Pre-check pass details before action via GET /api/organizer/verify-pass/:passCode
+    const preCheckRes = await fetch(`${BASE_URL}/organizer/verify-pass/${gatekeeperTicketCode}`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const preCheckData = await preCheckRes.json();
+    assert(
+      preCheckRes.status === 200 &&
+        preCheckData.success &&
+        preCheckData.passCode === gatekeeperTicketCode &&
+        preCheckData.isPresent === false &&
+        !!preCheckData.attendee?.name &&
+        !!preCheckData.event?.title,
+      'Test Case 33b: Organizer previews attendee pass details via GET /api/organizer/verify-pass/:passCode before action'
+    );
+
+    // 33c: Pre-check pass details via GET /api/attendance/pass/:passCode and full URL string
+    const passQueryRes = await fetch(
+      `${BASE_URL}/attendance/pass?passCode=https://college.edu/organizer/scan?passCode=${gatekeeperTicketCode}`,
+      {
+        headers: { Authorization: `Bearer ${organizerToken}` },
+      }
+    );
+    const passQueryData = await passQueryRes.json();
+    assert(
+      passQueryRes.status === 200 &&
+        passQueryData.success &&
+        passQueryData.passCode === gatekeeperTicketCode,
+      'Test Case 33c: Pass verification endpoint extracts passCode from full URL query parameters'
+    );
+
+    // 33d: Organizer marks attendance via POST /api/organizer/mark-attendance
+    const markGatekeeperAttRes = await fetch(`${BASE_URL}/organizer/mark-attendance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({ ticketCode: gatekeeperTicketCode }),
+    });
+    const markGatekeeperAttData = await markGatekeeperAttRes.json();
+    assert(
+      markGatekeeperAttRes.status === 200 &&
+        markGatekeeperAttData.success &&
+        markGatekeeperAttData.alreadyMarked === false &&
+        markGatekeeperAttData.isPresent === true &&
+        markGatekeeperAttData.attendance?.ticketCode === gatekeeperTicketCode,
+      'Test Case 33d: Organizer clicks "Mark Attendance", attendee marked PRESENT in PostgreSQL and certificate issued'
+    );
+
+    // 33e: Pass lookup now shows isPresent === true with check-in timestamp
+    const postCheckRes = await fetch(`${BASE_URL}/organizer/verify-pass/${gatekeeperTicketCode}`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const postCheckData = await postCheckRes.json();
+    assert(
+      postCheckRes.status === 200 &&
+        postCheckData.success &&
+        postCheckData.isPresent === true &&
+        !!postCheckData.attendedAt,
+      'Test Case 33e: Subsequent pass lookup reflects updated PRESENT state and recorded attendedAt timestamp'
+    );
+
+    // 33f: Second scan prevents double-marking and returns alreadyMarked: true
+    const secondMarkRes = await fetch(`${BASE_URL}/organizer/mark-attendance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({ ticketCode: gatekeeperTicketCode }),
+    });
+    const secondMarkData = await secondMarkRes.json();
+    assert(
+      secondMarkRes.status === 200 &&
+        secondMarkData.success &&
+        secondMarkData.alreadyMarked === true &&
+        secondMarkData.isPresent === true,
+      'Test Case 33f: Scanning pass a second time safely prevents duplicate check-in and returns alreadyMarked: true'
+    );
+
+    // 33g: Unknown / invalid pass code returns 404
+    const unknownPassRes = await fetch(`${BASE_URL}/organizer/verify-pass/CP-INVALID-999999`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    assert(
+      unknownPassRes.status === 404,
+      'Test Case 33g: Non-existent or invalid pass code returns 404 Not Found'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

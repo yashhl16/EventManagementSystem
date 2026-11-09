@@ -35,6 +35,7 @@ import { CreateEventPage } from './pages/organizer/CreateEventPage';
 import { EditEventPage } from './pages/organizer/EditEventPage';
 import { ManageEventRegistrationsPage } from './pages/organizer/ManageEventRegistrationsPage';
 import { QRScanAttendancePage } from './pages/organizer/QRScanAttendancePage';
+import { OrganizerScanPassPage } from './pages/organizer/OrganizerScanPassPage';
 import { OrganizerAnnouncementsPage } from './pages/organizer/OrganizerAnnouncementsPage';
 
 // Admin Pages
@@ -97,6 +98,7 @@ export const App: React.FC = () => {
         <Route path="/organizer/edit-event/:id" element={<EditEventPage />} />
         <Route path="/organizer/events/:id/roster" element={<ManageEventRegistrationsPage />} />
         <Route path="/organizer/attendance-scanner" element={<QRScanAttendancePage />} />
+        <Route path="/organizer/scan" element={<OrganizerScanPassPage />} />
         <Route path="/organizer/announcements" element={<OrganizerAnnouncementsPage />} />
       </Route>
 

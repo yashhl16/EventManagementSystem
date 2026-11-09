@@ -34,7 +34,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
   const organizerLinks = [
     { to: '/organizer/dashboard', label: 'Organizer Overview', icon: LayoutDashboard },
     { to: '/organizer/create-event', label: 'Create New Event', icon: PlusCircle },
-    { to: '/organizer/attendance-scanner', label: 'QR Attendance Scanner', icon: QrCode },
+    { to: '/organizer/scan', label: 'QR Pass Scanner & Gatekeeper', icon: QrCode },
     { to: '/organizer/announcements', label: 'Event Announcements', icon: Megaphone },
     { to: '/events', label: 'View Public Hub', icon: Compass },
   ];

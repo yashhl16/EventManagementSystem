@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { QrCode, Search, CheckCircle2, AlertCircle, Camera } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { QrCode, Search, CheckCircle2, AlertCircle, Camera, ShieldCheck, ArrowRight } from 'lucide-react';
 import { attendanceService } from '../../services/api';
 import { Button } from '../../components/common/Button';
 
@@ -43,13 +44,20 @@ export const QRScanAttendancePage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-          Mobile QR Attendance Scanner
-        </h1>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Scan attendee passes or enter the ticket verification code to confirm entry and enable certificate generation.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+            Mobile QR Attendance Scanner
+          </h1>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Scan attendee passes or enter the ticket verification code to confirm entry and enable certificate generation.
+          </p>
+        </div>
+        <Link to="/organizer/scan">
+          <Button variant="outline" size="sm" leftIcon={<ShieldCheck className="h-4 w-4 text-indigo-600" />}>
+            Gatekeeper Pass View <ArrowRight className="h-3.5 w-3.5 ml-1" />
+          </Button>
+        </Link>
       </div>
 
       {/* Main Scanner Box */}

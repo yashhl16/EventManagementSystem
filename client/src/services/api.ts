@@ -123,11 +123,15 @@ export const attendanceService = {
 
   markAttendance: (payload: {
     ticketCode?: string;
+    passCode?: string;
     eventId?: string;
     registrationId?: string;
     studentId?: string;
     method?: string;
   }) => api.post('/organizer/mark-attendance', payload),
+
+  getPassDetails: (passCode: string) =>
+    api.get(`/organizer/verify-pass/${encodeURIComponent(passCode)}`),
 
   getEventAttendanceStats: (eventId: string) => api.get(`/attendance/stats/${eventId}`),
 };

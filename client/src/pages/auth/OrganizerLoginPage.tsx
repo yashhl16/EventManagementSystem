@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Briefcase,
   Mail,
@@ -22,6 +22,7 @@ export const OrganizerLoginPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const { loginOrganizer } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +31,12 @@ export const OrganizerLoginPage: React.FC = () => {
 
     try {
       await loginOrganizer({ email: email.trim(), password });
-      navigate('/organizer/dashboard');
+      const fromPath =
+        (location.state as any)?.from?.pathname &&
+        (location.state as any)?.from?.pathname !== '/organizer/login'
+          ? (location.state as any).from.pathname + ((location.state as any)?.from?.search || '')
+          : '/organizer/dashboard';
+      navigate(fromPath, { replace: true });
     } catch (err: any) {
       console.warn('[OrganizerLogin] Authentication attempt failed:', {
         status: err.response?.status,

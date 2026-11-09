@@ -17,7 +17,7 @@ import teamRoutes from './routes/teamRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
 import { protect, requireAnyRole } from './middleware/auth.js';
 import { updateProfile, getMe } from './controllers/authController.js';
-import { markAttendance } from './controllers/attendanceController.js';
+import { markAttendance, getPassDetails } from './controllers/attendanceController.js';
 
 dotenv.config();
 
@@ -86,6 +86,19 @@ app.post(
   protect,
   requireAnyRole(['organizer', 'admin']),
   markAttendance
+);
+app.get(
+  [
+    '/api/organizer/verify-pass/:passCode',
+    '/organizer/verify-pass/:passCode',
+    '/api/organizer/verify-pass',
+    '/organizer/verify-pass',
+    '/api/verify-pass/:passCode',
+    '/verify-pass/:passCode',
+  ],
+  protect,
+  requireAnyRole(['organizer', 'admin']),
+  getPassDetails
 );
 app.use(['/api/auth', '/auth'], authRoutes);
 app.use(['/api/events', '/events'], eventRoutes);

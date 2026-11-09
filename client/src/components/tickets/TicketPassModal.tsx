@@ -104,12 +104,13 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
     }
   };
 
-  const qrPayload = JSON.stringify({
-    ticketCode: registration.ticketCode,
-    eventId: event?._id || event?.id,
-    userId: regUser?._id || authUser?._id || '',
-    name: attendeeName,
-  });
+  const origin =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : '';
+  const qrVerificationUrl = `${origin}/organizer/scan?passCode=${encodeURIComponent(
+    registration.ticketCode
+  )}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -214,7 +215,7 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
           <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-800/40">
             <div className="rounded-xl bg-white p-3 shadow-md dark:bg-white">
               <QRCodeSVG
-                value={qrPayload}
+                value={qrVerificationUrl}
                 size={160}
                 level="H"
                 includeMargin={false}
@@ -224,7 +225,7 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
               Present this QR code at the event gate for official scan verification.
             </p>
             <p className="mt-1 font-mono text-[10px] text-slate-400">
-              Verification Code: {registration.ticketCode}
+              Pass Verification Route: <span className="font-bold text-indigo-600 dark:text-indigo-400">{registration.ticketCode}</span>
             </p>
           </div>
 
@@ -269,3 +270,6 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
     </div>
   );
 };
+
+export const EntryPassModal = TicketPassModal;
+export default TicketPassModal;
