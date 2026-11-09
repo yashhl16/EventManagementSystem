@@ -249,6 +249,8 @@ export const initSchema = async () => {
       `ALTER TABLE events ADD COLUMN IF NOT EXISTS max_team_size INT DEFAULT 4;`,
       `ALTER TABLE events ADD COLUMN IF NOT EXISTS team_size_min INT DEFAULT 1;`,
       `ALTER TABLE events ADD COLUMN IF NOT EXISTS team_size_max INT DEFAULT 4;`,
+      `ALTER TABLE events ADD COLUMN IF NOT EXISTS certificate_template_url TEXT DEFAULT '';`,
+      `ALTER TABLE events ADD COLUMN IF NOT EXISTS certificate_template_config JSONB DEFAULT '{}'::jsonb;`,
       `CREATE TABLE IF NOT EXISTS teams (
         id VARCHAR(36) PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
@@ -574,6 +576,11 @@ export const mapEvent = (row) => {
       min: row.team_size_min || 1,
       max: row.team_size_max || row.max_team_size || 4,
     },
+    certificateTemplateUrl: row.certificate_template_url || '',
+    certificateTemplateConfig:
+      typeof row.certificate_template_config === 'string'
+        ? JSON.parse(row.certificate_template_config)
+        : (row.certificate_template_config || null),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -676,6 +683,11 @@ export const mapCertificate = (row) => {
     studentName: row.student_name,
     studentRoll: row.student_roll || '',
     eventTitle: row.event_title,
+    certificateTemplateUrl: row.certificate_template_url || row.event_template_url || '',
+    certificateTemplateConfig:
+      typeof (row.certificate_template_config || row.event_template_config) === 'string'
+        ? JSON.parse(row.certificate_template_config || row.event_template_config)
+        : (row.certificate_template_config || row.event_template_config || null),
     event: row.event_id ? {
       _id: row.event_id,
       id: row.event_id,
@@ -684,6 +696,11 @@ export const mapCertificate = (row) => {
       eventDate: row.event_date ? (row.event_date.toISOString ? row.event_date.toISOString().split('T')[0] : String(row.event_date).split('T')[0]) : '',
       venue: row.event_venue || '',
       bannerImage: row.event_banner || '',
+      certificateTemplateUrl: row.certificate_template_url || row.event_template_url || '',
+      certificateTemplateConfig:
+        typeof (row.certificate_template_config || row.event_template_config) === 'string'
+          ? JSON.parse(row.certificate_template_config || row.event_template_config)
+          : (row.certificate_template_config || row.event_template_config || null),
     } : null,
     eventDate: row.event_date ? (row.event_date.toISOString ? row.event_date.toISOString().split('T')[0] : String(row.event_date).split('T')[0]) : '',
     category: row.event_category || 'Technical',

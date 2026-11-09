@@ -1563,6 +1563,154 @@ async function runTests() {
       'Test Case 33g: Non-existent or invalid pass code returns 404 Not Found'
     );
 
+    // ==========================================
+    // TEST CASE 34: Custom Certificate Template Upload & Dynamic Student Overlay
+    // ==========================================
+    const customTemplateUrl = 'https://images.unsplash.com/photo-custom-certificate-template-2026.png';
+    const customTemplateConfig = {
+      studentName: { x: 50, y: 44, fontSize: 46, color: '#1e1b4b', align: 'center', bold: true },
+      studentRoll: { x: 50, y: 52, fontSize: 20, color: '#4338ca', align: 'center', bold: false },
+      eventTitle: { x: 50, y: 62, fontSize: 26, color: '#1e1b4b', align: 'center', bold: true },
+      issueDate: { x: 26, y: 82, fontSize: 16, color: '#475569', align: 'center', bold: false },
+      certificateId: { x: 74, y: 82, fontSize: 16, color: '#475569', align: 'center', bold: true },
+    };
+
+    // 34a: Organizer creates event with custom certificate template and coordinates
+    const templateEventRes = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        title: 'National Robotics & Autonomous Systems Symposium',
+        description: 'Premier symposium showcasing autonomous robotics and AI hardware demonstrations.',
+        category: 'Workshop',
+        eventDate: '2026-11-25',
+        startTime: '10:00',
+        endTime: '17:00',
+        venue: 'Robotics Engineering Hall',
+        maxCapacity: 80,
+        registrationDeadline: '2026-11-24',
+        certificateTemplateUrl: customTemplateUrl,
+        certificateTemplateConfig: customTemplateConfig,
+      }),
+    });
+    const templateEventData = await templateEventRes.json();
+    const templateEventId = templateEventData.event?.id || templateEventData.event?._id;
+    assert(
+      templateEventRes.status === 201 &&
+        templateEventData.success &&
+        templateEventData.event?.certificateTemplateUrl === customTemplateUrl &&
+        !!templateEventData.event?.certificateTemplateConfig?.studentName,
+      'Test Case 34a: Organizer creates event with custom certificate template and coordinates'
+    );
+
+    // Approve event
+    await fetch(`${BASE_URL}/admin/events/${templateEventId}/approve`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    // 34b: Fetch event details verifies certificateTemplateUrl persistence
+    const getEvtRes = await fetch(`${BASE_URL}/events/${templateEventId}`);
+    const getEvtData = await getEvtRes.json();
+    assert(
+      getEvtRes.status === 200 &&
+        getEvtData.event?.certificateTemplateUrl === customTemplateUrl,
+      'Test Case 34b: Public event endpoint returns stored certificateTemplateUrl'
+    );
+
+    // Student registers for custom template event
+    const templateStudentRegRes = await fetch(`${BASE_URL}/registrations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({ eventId: templateEventId, bypassConflict: true }),
+    });
+    const templateStudentRegData = await templateStudentRegRes.json();
+    const templateTicketCode = templateStudentRegData.registration?.ticketCode;
+    assert(
+      templateStudentRegRes.status === 201 && !!templateTicketCode,
+      'Test Case 34c: Student registers for custom template event'
+    );
+
+    // 34d: Organizer marks attendance and system auto-generates certificate linked to custom template
+    const markTemplateAttRes = await fetch(`${BASE_URL}/organizer/mark-attendance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({ ticketCode: templateTicketCode }),
+    });
+    const markTemplateAttData = await markTemplateAttRes.json();
+    const customCertCode = markTemplateAttData.certificate?.certificateCode;
+    assert(
+      markTemplateAttRes.status === 200 &&
+        markTemplateAttData.success &&
+        !!customCertCode &&
+        markTemplateAttData.certificate?.certificateTemplateUrl === customTemplateUrl,
+      'Test Case 34d: Attendance marked and certificate generated with event custom certificate template URL'
+    );
+
+    // 34e: Student queries /certificates/my and receives custom template info
+    const myCustomCertRes = await fetch(`${BASE_URL}/certificates/my`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const myCustomCertData = await myCustomCertRes.json();
+    const foundCert = myCustomCertData.certificates?.find((c) => c.certificateCode === customCertCode);
+    assert(
+      myCustomCertRes.status === 200 &&
+        !!foundCert &&
+        foundCert.certificateTemplateUrl === customTemplateUrl,
+      'Test Case 34e: Student retrieves certificate with custom template URL and coordinate metadata'
+    );
+
+    // 34f: Public verification route verifies certificate and returns custom template metadata
+    const verifyCustomRes = await fetch(`${BASE_URL}/certificates/verify/${customCertCode}`);
+    const verifyCustomData = await verifyCustomRes.json();
+    assert(
+      verifyCustomRes.status === 200 &&
+        verifyCustomData.success &&
+        verifyCustomData.certificate?.certificateTemplateUrl === customTemplateUrl,
+      'Test Case 34f: Public certificate verification endpoint supplies custom template information'
+    );
+
+    // 34g: Download endpoint outputs custom template HTML with dynamic student data overlays
+    const downloadCustomRes = await fetch(`${BASE_URL}/certificates/download/${customCertCode}`);
+    const downloadCustomHtml = await downloadCustomRes.text();
+    assert(
+      downloadCustomRes.status === 200 &&
+        downloadCustomHtml.includes(customTemplateUrl) &&
+        downloadCustomHtml.includes('custom-cert-frame') &&
+        downloadCustomHtml.includes('National Robotics & Autonomous Systems Symposium') &&
+        downloadCustomHtml.includes(customCertCode),
+      'Test Case 34g: Download endpoint renders custom template background with dynamic student data overlay'
+    );
+
+    // 34h: Organizer updates event's certificate template via PUT /api/events/:id
+    const updatedTemplateUrl = 'https://images.unsplash.com/photo-updated-template-v2.png';
+    const updateEvtRes = await fetch(`${BASE_URL}/events/${templateEventId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        certificateTemplateUrl: updatedTemplateUrl,
+      }),
+    });
+    const updateEvtData = await updateEvtRes.json();
+    assert(
+      updateEvtRes.status === 200 &&
+        updateEvtData.success &&
+        updateEvtData.event?.certificateTemplateUrl === updatedTemplateUrl,
+      'Test Case 34h: Organizer updates custom certificate template URL via PUT /events/:id'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

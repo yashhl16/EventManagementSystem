@@ -15,6 +15,7 @@ import {
 import { certificateService } from '../../services/api';
 import { Button } from '../../components/common/Button';
 import { CategoryBadge } from '../../components/common/Badge';
+import { CertificateCanvasPreview } from '../../components/certificates/CertificateCanvasPreview';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import {
@@ -172,6 +173,14 @@ export const VerifyCertificatePage: React.FC = () => {
                   })}
                 </p>
               </div>
+            </div>
+
+            {/* Dynamic Certificate Visual Preview */}
+            <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                Official Credential Visual Verification
+              </span>
+              <CertificateCanvasPreview certificate={certData} />
             </div>
 
             <div className="mt-6 rounded-xl bg-slate-50 p-3 text-[11px] text-slate-500 dark:bg-slate-800/50 dark:text-slate-400 flex items-center justify-between">

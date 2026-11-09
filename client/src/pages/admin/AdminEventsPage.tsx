@@ -20,13 +20,14 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { adminService } from '../../services/api';
-import { CollegeEvent } from '../../types';
+import { CollegeEvent, CertificateTemplateConfig } from '../../types';
 import { StatusBadge, CategoryBadge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { StatCard } from '../../components/common/StatCard';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState } from '../../components/common/EmptyState';
+import { CertificateTemplateUpload } from '../../components/events/CertificateTemplateUpload';
 import {
   getMinEventDate,
   validateEventSchedule,
@@ -93,6 +94,8 @@ export const AdminEventsPage: React.FC = () => {
     isPaid: false,
     ticketPrice: 0,
     department: 'Campus Administration',
+    certificateTemplateUrl: '',
+    certificateTemplateConfig: null as CertificateTemplateConfig | null,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -167,6 +170,8 @@ export const AdminEventsPage: React.FC = () => {
       isPaid: false,
       ticketPrice: 0,
       department: 'Campus Administration',
+      certificateTemplateUrl: '',
+      certificateTemplateConfig: null,
     });
     setFormErrors({});
     setIsFormOpen(true);
@@ -191,6 +196,8 @@ export const AdminEventsPage: React.FC = () => {
       isPaid: !!evt.isPaid,
       ticketPrice: evt.ticketPrice || 0,
       department: evt.department || 'Campus Administration',
+      certificateTemplateUrl: evt.certificateTemplateUrl || '',
+      certificateTemplateConfig: evt.certificateTemplateConfig || null,
     });
     setFormErrors({});
     setIsFormOpen(true);
@@ -935,6 +942,15 @@ export const AdminEventsPage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Certificate Template Customization */}
+              <CertificateTemplateUpload
+                templateUrl={formData.certificateTemplateUrl || ''}
+                templateConfig={formData.certificateTemplateConfig || null}
+                onTemplateUrlChange={(url) => setFormData({ ...formData, certificateTemplateUrl: url })}
+                onTemplateConfigChange={(cfg) => setFormData({ ...formData, certificateTemplateConfig: cfg })}
+                sampleEventTitle={formData.title || 'Campus Event'}
+              />
 
               {/* Submit / Cancel Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">

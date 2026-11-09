@@ -100,6 +100,7 @@ export const getMyCertificates = async (req, res) => {
     const certsRes = await query(
       `SELECT c.*, 
               e.title as event_title, e.category as event_category, e.banner_image as event_banner, e.event_date, e.venue as event_venue,
+              e.certificate_template_url, e.certificate_template_config,
               u.organization_name
        FROM certificates c
        LEFT JOIN events e ON c.event_id = e.id
@@ -133,6 +134,7 @@ export const getEventCertificate = async (req, res) => {
     let certRes = await query(
       `SELECT c.*, 
               e.title as event_title, e.category as event_category, e.banner_image as event_banner, e.event_date, e.venue as event_venue,
+              e.certificate_template_url, e.certificate_template_config,
               u.organization_name
        FROM certificates c
        LEFT JOIN events e ON c.event_id = e.id
@@ -192,6 +194,7 @@ export const verifyCertificate = async (req, res) => {
     const certRes = await query(
       `SELECT c.*, 
               e.title as event_title, e.category as event_category, e.event_date, e.venue as event_venue,
+              e.certificate_template_url, e.certificate_template_config,
               u.name as issuer_name, u.email as issuer_email, u.organization_name
        FROM certificates c
        LEFT JOIN events e ON c.event_id = e.id
@@ -226,6 +229,9 @@ export const verifyCertificate = async (req, res) => {
         issuerOrganization: cert.issuerOrganization || 'College Event Council',
         verificationUrl: cert.verificationUrl,
         pdfUrl: cert.pdfUrl,
+        certificateTemplateUrl: cert.certificateTemplateUrl || '',
+        certificateTemplateConfig: cert.certificateTemplateConfig || null,
+        event: cert.event,
         status: 'valid',
       },
     });
@@ -247,6 +253,7 @@ export const getCertificateDownload = async (req, res) => {
     const certRes = await query(
       `SELECT c.*, 
               e.title as event_title, e.category as event_category, e.event_date, e.venue as event_venue,
+              e.certificate_template_url, e.certificate_template_config,
               u.name as issuer_name, u.organization_name
        FROM certificates c
        LEFT JOIN events e ON c.event_id = e.id
@@ -265,6 +272,68 @@ export const getCertificateDownload = async (req, res) => {
     const formattedDate = cert.eventDate
       ? new Date(cert.eventDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : 'Official Schedule';
+
+    const hasCustomTemplate = !!cert.certificateTemplateUrl;
+    const config = cert.certificateTemplateConfig || {};
+    const namePos = config.studentName || { x: 50, y: 45, fontSize: 44, color: '#1e1b4b' };
+    const rollPos = config.studentRoll || { x: 50, y: 52, fontSize: 20, color: '#4338ca' };
+    const eventPos = config.eventTitle || { x: 50, y: 62, fontSize: 26, color: '#1e1b4b' };
+    const datePos = config.issueDate || { x: 25, y: 82, fontSize: 16, color: '#475569' };
+    const idPos = config.certificateId || { x: 75, y: 82, fontSize: 16, color: '#475569' };
+
+    const bodyContent = hasCustomTemplate
+      ? `
+      <div class="custom-cert-frame" style="width: 1060px; height: 740px; position: relative; background: #ffffff url('${cert.certificateTemplateUrl}') no-repeat center center / 100% 100%; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2); overflow: hidden;">
+        <div style="position: absolute; left: ${namePos.x}%; top: ${namePos.y}%; transform: translate(-50%, -50%); font-family: 'Georgia', serif; font-size: ${namePos.fontSize || 44}px; font-weight: 800; color: ${namePos.color || '#1e1b4b'}; text-align: center; white-space: nowrap; text-shadow: 0 1px 3px rgba(255,255,255,0.8);">
+          ${cert.studentName}
+        </div>
+        ${cert.studentRoll ? `<div style="position: absolute; left: ${rollPos.x}%; top: ${rollPos.y}%; transform: translate(-50%, -50%); font-family: 'Arial', sans-serif; font-size: ${rollPos.fontSize || 20}px; font-weight: 600; color: ${rollPos.color || '#4338ca'}; text-align: center; white-space: nowrap;">Roll / ID: ${cert.studentRoll}</div>` : ''}
+        <div style="position: absolute; left: ${eventPos.x}%; top: ${eventPos.y}%; transform: translate(-50%, -50%); font-family: 'Arial', sans-serif; font-size: ${eventPos.fontSize || 26}px; font-weight: bold; color: ${eventPos.color || '#1e1b4b'}; text-align: center; max-width: 80%;">
+          ${cert.eventTitle}
+        </div>
+        <div style="position: absolute; left: ${datePos.x}%; top: ${datePos.y}%; transform: translate(-50%, -50%); font-family: 'Arial', sans-serif; font-size: ${datePos.fontSize || 16}px; color: ${datePos.color || '#475569'}; text-align: center;">
+          ${formattedDate}
+        </div>
+        <div style="position: absolute; left: ${idPos.x}%; top: ${idPos.y}%; transform: translate(-50%, -50%); font-family: monospace; font-size: ${idPos.fontSize || 16}px; font-weight: bold; color: ${idPos.color || '#475569'}; text-align: center;">
+          ${cert.certificateNumber || cert.certificateCode}
+        </div>
+      </div>
+      `
+      : `
+      <div class="cert-frame">
+        <div class="cert-inner">
+          <div>
+            <div class="seal-badge">🎓</div>
+            <div class="institution-header">SGU Academic & Technical Council</div>
+            <h1 class="main-title">Certificate of Participation</h1>
+            <div class="subtitle">This is proudly presented to</div>
+            <div class="recipient">${cert.studentName}</div>
+            <p class="narrative">
+              for active and successful participation in <strong>"${cert.eventTitle}"</strong> 
+              organized by the <strong>${cert.issuerOrganization || 'College Event Council'}</strong> on ${formattedDate}.
+            </p>
+          </div>
+
+          <div>
+            <div class="signatures-row">
+              <div class="sign-box">
+                <div class="sign-script">Dr. Sarah Mitchell</div>
+                <div class="sign-rule">Faculty Event Coordinator</div>
+              </div>
+              <div class="sign-box">
+                <div class="sign-script">Dr. Marcus Vance</div>
+                <div class="sign-rule">Dean of Student Affairs</div>
+              </div>
+            </div>
+
+            <div class="footer-bar">
+              <div>Verification: <strong>${cert.verificationUrl}</strong></div>
+              <div>Certificate ID: <strong>${cert.certificateNumber || cert.certificateCode}</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      `;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -442,38 +511,7 @@ export const getCertificateDownload = async (req, res) => {
 <body>
   <button class="btn-print no-print" onclick="window.print()">Print / Save as PDF</button>
 
-  <div class="cert-frame">
-    <div class="cert-inner">
-      <div>
-        <div class="seal-badge">★</div>
-        <div class="institution-header">SGU Academic & Technical Council</div>
-        <div class="main-title">Certificate of Participation</div>
-        <div class="subtitle">This is proudly presented to</div>
-        <div class="recipient">${cert.studentName}</div>
-        <div class="narrative">
-          for active and successful participation in <strong>"${cert.eventTitle}"</strong> organized by <strong>${cert.issuerOrganization}</strong> on ${formattedDate}.
-        </div>
-      </div>
-
-      <div>
-        <div class="signatures-row">
-          <div class="sign-box">
-            <div class="sign-script">Dr. Sarah Mitchell</div>
-            <div class="sign-rule">Faculty Event Coordinator</div>
-          </div>
-          <div class="sign-box">
-            <div class="sign-script">Dr. Marcus Vance</div>
-            <div class="sign-rule">Dean of Student Affairs</div>
-          </div>
-        </div>
-
-        <div class="footer-bar">
-          <span>✓ Official Cryptographically Verified Credential</span>
-          <span>Credential ID: <strong>${cert.certificateNumber || cert.certificateCode}</strong></span>
-        </div>
-      </div>
-    </div>
-  </div>
+  ${bodyContent}
 
   <script>
     if (window.location.search.includes('autoprint=true')) {

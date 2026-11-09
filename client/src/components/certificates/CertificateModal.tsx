@@ -6,7 +6,9 @@ import { Button } from '../common/Button';
 import {
   downloadCertificateAsPDF,
   printCertificateWindow,
+  getCertificateTemplateUrl,
 } from '../../utils/certificatePdfRenderer';
+import { CertificateCanvasPreview } from './CertificateCanvasPreview';
 
 interface CertificateModalProps {
   isOpen: boolean;
@@ -59,7 +61,51 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
 
         {/* Certificate Canvas / Frame */}
         <div className="overflow-y-auto p-4 sm:p-8">
-          <div className="p-6 sm:p-10 text-center relative bg-gradient-to-br from-amber-50/40 via-white to-indigo-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 border-[10px] border-double border-amber-600/30 dark:border-amber-500/20 rounded-2xl shadow-inner">
+          {getCertificateTemplateUrl(certificate) ? (
+            <div className="space-y-4">
+              <CertificateCanvasPreview certificate={certificate} className="mx-auto max-w-2xl" />
+
+              {/* Security & Verification Footer with live QR Code */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/40">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white p-1.5 rounded-xl border border-slate-200 shadow-xs shrink-0">
+                    <QRCodeSVG
+                      value={verificationUrl}
+                      size={48}
+                      level="H"
+                      includeMargin={false}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Cryptographically Verified Credential</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">Personalized custom design with dynamic verification</p>
+                  </div>
+                </div>
+
+                <div className="text-center sm:text-right font-mono text-[11px]">
+                  <div>
+                    Certificate ID:{' '}
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {certCode}
+                    </span>
+                  </div>
+                  <a
+                    href={`/verify-certificate/${certCode}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 justify-center sm:justify-end mt-0.5"
+                  >
+                    <span>Verify Record</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 sm:p-10 text-center relative bg-gradient-to-br from-amber-50/40 via-white to-indigo-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 border-[10px] border-double border-amber-600/30 dark:border-amber-500/20 rounded-2xl shadow-inner">
             {/* Watermark / Seal Icon */}
             <div className="mx-auto flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-lg shadow-amber-500/20">
               <Award className="h-8 w-8 sm:h-9 sm:w-9" />
@@ -164,6 +210,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Modal Controls */}

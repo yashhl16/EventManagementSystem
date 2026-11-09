@@ -42,6 +42,26 @@ export type EventStatus =
 
 export type EventLifecycleStatus = 'Upcoming' | 'Ongoing' | 'Completed';
 
+export interface CertificateCoordinate {
+  x: number; // percentage (0 - 100)
+  y: number; // percentage (0 - 100)
+  fontSize?: number;
+  color?: string;
+  fontFamily?: string;
+  align?: 'left' | 'center' | 'right';
+  bold?: boolean;
+}
+
+export interface CertificateTemplateConfig {
+  studentName?: CertificateCoordinate;
+  studentRoll?: CertificateCoordinate;
+  eventTitle?: CertificateCoordinate;
+  issueDate?: CertificateCoordinate;
+  certificateId?: CertificateCoordinate;
+  textColor?: string;
+  accentColor?: string;
+}
+
 export interface CollegeEvent {
   _id: string;
   id?: string;
@@ -76,6 +96,8 @@ export interface CollegeEvent {
   teamMinSize?: number;
   teamMaxSize?: number;
   maxTeamSize?: number;
+  certificateTemplateUrl?: string;
+  certificateTemplateConfig?: CertificateTemplateConfig | null;
   status: EventStatus;
   rejectionReason?: string;
   tags: string[];
@@ -135,6 +157,8 @@ export interface Certificate {
   issuerOrganization: string;
   pdfUrl?: string;
   verificationUrl?: string;
+  certificateTemplateUrl?: string;
+  certificateTemplateConfig?: CertificateTemplateConfig | null;
   status: 'valid' | 'revoked';
   createdAt?: string;
 }

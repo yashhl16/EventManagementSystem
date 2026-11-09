@@ -18,6 +18,7 @@ export const ensureCertificateForAttendance = async ({
     const existing = await query(
       `SELECT c.*, 
               e.title as event_title, e.category as event_category, e.event_date, e.venue as event_venue,
+              e.certificate_template_url, e.certificate_template_config,
               u.organization_name
        FROM certificates c
        LEFT JOIN events e ON c.event_id = e.id
@@ -94,7 +95,20 @@ export const ensureCertificateForAttendance = async ({
       ]
     ).catch(() => {});
 
-    return mapCertificate(insertRes.rows[0]);
+    // Return fully populated certificate object with template info
+    const fullCertRes = await query(
+      `SELECT c.*, 
+              e.title as event_title, e.category as event_category, e.event_date, e.venue as event_venue,
+              e.certificate_template_url, e.certificate_template_config,
+              u.organization_name
+       FROM certificates c
+       LEFT JOIN events e ON c.event_id = e.id
+       LEFT JOIN users u ON c.issued_by = u.id
+       WHERE c.id = $1`,
+      [insertRes.rows[0].id]
+    );
+
+    return mapCertificate(fullCertRes.rows[0] || insertRes.rows[0]);
   } catch (err) {
     console.error('Error generating certificate for attendance:', err);
     return null;

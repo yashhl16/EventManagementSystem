@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { eventService } from '../../services/api';
 import { Button } from '../../components/common/Button';
+import { CertificateTemplateUpload } from '../../components/events/CertificateTemplateUpload';
+import { CertificateTemplateConfig } from '../../types';
 import {
   validateText,
   validateUrl,
@@ -78,6 +80,8 @@ export const CreateEventPage: React.FC = () => {
   const [teamMinSize, setTeamMinSize] = useState('2');
   const [teamMaxSize, setTeamMaxSize] = useState('4');
   const [tags, setTags] = useState('Technology, Hackathons, Innovation');
+  const [certificateTemplateUrl, setCertificateTemplateUrl] = useState('');
+  const [certificateTemplateConfig, setCertificateTemplateConfig] = useState<CertificateTemplateConfig | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -202,6 +206,8 @@ export const CreateEventPage: React.FC = () => {
         isTeamEvent,
         teamMinSize: isTeamEvent ? Number(teamMinSize) : 1,
         teamMaxSize: isTeamEvent ? Number(teamMaxSize) : 1,
+        certificateTemplateUrl: certificateTemplateUrl ? certificateTemplateUrl.trim() : undefined,
+        certificateTemplateConfig: certificateTemplateConfig || undefined,
         tags: tags.split(',').map((t) => t.trim()),
       });
 
@@ -594,6 +600,15 @@ export const CreateEventPage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Certificate Template Customization */}
+        <CertificateTemplateUpload
+          templateUrl={certificateTemplateUrl}
+          templateConfig={certificateTemplateConfig}
+          onTemplateUrlChange={setCertificateTemplateUrl}
+          onTemplateConfigChange={setCertificateTemplateConfig}
+          sampleEventTitle={title || 'Campus Tech Event'}
+        />
 
         {/* Submit */}
         <div className="flex items-center justify-end gap-3 pt-4">

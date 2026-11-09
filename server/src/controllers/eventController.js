@@ -268,6 +268,8 @@ export const createEvent = async (req, res) => {
       isTeamEvent,
       teamSizeMin,
       teamSizeMax,
+      certificateTemplateUrl,
+      certificateTemplateConfig,
     } = req.body;
 
     if (!title || !description || !category || !eventDate || !startTime || !endTime || !venue) {
@@ -335,10 +337,10 @@ export const createEvent = async (req, res) => {
         venue, venue_type, meeting_url, creator_id, organizer_name, organizer_email,
         department, max_capacity, registered_count, registration_deadline, is_paid,
         ticket_price, status, tags, eligibility, prerequisites, is_team_event,
-        team_size_min, team_size_max
+        team_size_min, team_size_max, certificate_template_url, certificate_template_config
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-        $15, $16, 0, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
+        $15, $16, 0, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
       ) RETURNING *`,
       [
         id,
@@ -367,6 +369,8 @@ export const createEvent = async (req, res) => {
         !!isTeamEvent,
         Number(teamSizeMin) || 1,
         Number(teamSizeMax) || 4,
+        certificateTemplateUrl ? certificateTemplateUrl.trim() : '',
+        certificateTemplateConfig ? JSON.stringify(certificateTemplateConfig) : '{}',
       ]
     );
 
@@ -424,6 +428,8 @@ export const updateEvent = async (req, res) => {
       tags,
       eligibility,
       prerequisites,
+      certificateTemplateUrl,
+      certificateTemplateConfig,
     } = req.body;
 
     if (title !== undefined) {
@@ -496,8 +502,10 @@ export const updateEvent = async (req, res) => {
            tags = COALESCE($15, tags),
            eligibility = COALESCE($16, eligibility),
            prerequisites = COALESCE($17, prerequisites),
+           certificate_template_url = COALESCE($18, certificate_template_url),
+           certificate_template_config = COALESCE($19, certificate_template_config),
            updated_at = NOW()
-       WHERE id = $18
+       WHERE id = $20
        RETURNING *`,
       [
         title ? title.trim() : null,
@@ -517,6 +525,8 @@ export const updateEvent = async (req, res) => {
         tags ? JSON.stringify(tags) : null,
         eligibility || null,
         prerequisites || null,
+        certificateTemplateUrl !== undefined ? (certificateTemplateUrl ? certificateTemplateUrl.trim() : '') : null,
+        certificateTemplateConfig !== undefined ? JSON.stringify(certificateTemplateConfig) : null,
         id,
       ]
     );

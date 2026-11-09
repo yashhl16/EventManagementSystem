@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { eventService } from '../../services/api';
 import { Button } from '../../components/common/Button';
+import { CertificateTemplateUpload } from '../../components/events/CertificateTemplateUpload';
+import { CertificateTemplateConfig } from '../../types';
 import { validateText, validateUrl, getMinEventDate, validateEventSchedule } from '../../utils/validation';
 
 const CATEGORIES = [
@@ -44,6 +46,8 @@ export const EditEventPage: React.FC = () => {
   const [isPaid, setIsPaid] = useState(false);
   const [ticketPrice, setTicketPrice] = useState('0');
   const [tags, setTags] = useState('');
+  const [certificateTemplateUrl, setCertificateTemplateUrl] = useState('');
+  const [certificateTemplateConfig, setCertificateTemplateConfig] = useState<CertificateTemplateConfig | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -116,6 +120,8 @@ export const EditEventPage: React.FC = () => {
           setIsPaid(Boolean(ev.isPaid));
           setTicketPrice(String(ev.ticketPrice || 0));
           setTags((ev.tags || []).join(', '));
+          setCertificateTemplateUrl(ev.certificateTemplateUrl || '');
+          setCertificateTemplateConfig(ev.certificateTemplateConfig || null);
         }
       } catch (err: any) {
         setErrorMessage(err.response?.data?.message || 'Failed to load event details.');
@@ -197,6 +203,8 @@ export const EditEventPage: React.FC = () => {
         registrationDeadline,
         isPaid,
         ticketPrice: isPaid ? Number(ticketPrice) : 0,
+        certificateTemplateUrl: certificateTemplateUrl ? certificateTemplateUrl.trim() : '',
+        certificateTemplateConfig: certificateTemplateConfig || undefined,
         tags: tags.split(',').map((t) => t.trim()),
       });
 
@@ -430,6 +438,15 @@ export const EditEventPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Certificate Template Customization */}
+        <CertificateTemplateUpload
+          templateUrl={certificateTemplateUrl}
+          templateConfig={certificateTemplateConfig}
+          onTemplateUrlChange={setCertificateTemplateUrl}
+          onTemplateConfigChange={setCertificateTemplateConfig}
+          sampleEventTitle={title || 'Campus Event'}
+        />
 
         <div className="flex items-center justify-end gap-3 pt-4">
           <Button variant="outline" type="button" onClick={() => navigate('/organizer/dashboard')}>
