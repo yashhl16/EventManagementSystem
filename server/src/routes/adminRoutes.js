@@ -17,6 +17,7 @@ import {
   getEventAttendance,
   updateAttendanceStatus,
   exportAttendanceCSV,
+  getGlobalRegistrations,
 } from '../controllers/adminController.js';
 import { protect, requireRole } from '../middleware/auth.js';
 
@@ -35,6 +36,9 @@ router.post('/events', createAdminEvent);
 router.put('/events/:eventId', updateAdminEvent);
 router.put('/events/:eventId/status', changeAdminEventStatus);
 router.delete('/events/:eventId', deleteAdminEvent);
+
+// Global Campus Registration Management
+router.get('/registrations', getGlobalRegistrations);
 
 // Event Approval & Moderation
 router.get('/events/pending', getPendingEvents);

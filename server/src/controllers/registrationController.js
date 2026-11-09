@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { query, getClient, mapRegistration } from '../config/db.js';
+import { query, getClient, mapRegistration, mapEvent } from '../config/db.js';
 import { generateTicketCode, generateQRCodeDataUrl } from '../utils/qrHelper.js';
 import { validateText } from '../utils/validation.js';
 
@@ -433,60 +433,210 @@ export const joinTeam = async (req, res) => {
 };
 
 /**
- * Get Event Participants (Alias to getEventAttendees with extra fields)
+ * Get Event Registrations & Roster with Detailed Student Attributes
+ * Supports /api/organizer/events/:id/registrations & /api/registrations/event/:id
+ * Enforces RBAC: Organizers access only their own events; Admins access all events.
  */
-export const getEventParticipants = async (req, res) => {
+export const getEventRegistrations = async (req, res) => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.id || req.params.eventId;
 
+    if (!eventId) {
+      return res.status(400).json({ success: false, message: 'Event ID is required.' });
+    }
+
+    // 1. Verify Event Exists
+    const eventRes = await query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
+    }
+
+    const rawEvent = eventRes.rows[0];
+    const event = mapEvent(rawEvent);
+
+    // 2. Role-Based Access Control (RBAC)
+    const currentUser = req.user;
+    const isSuperAdmin = currentUser && currentUser.role === 'admin';
+    const isOwnerOrganizer = currentUser && String(rawEvent.creator_id) === String(currentUser.id || currentUser._id);
+
+    if (!isSuperAdmin && !isOwnerOrganizer) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You are not authorized to view registrations for this event.',
+      });
+    }
+
+    // 3. Query Registrations joined with Users and Attendances
     const attendeesRes = await query(
-      `SELECT r.id, r.event_id, r.ticket_code, r.status, r.registration_date, r.qr_code_data, r.team_name,
+      `SELECT r.id as registration_id, r.id, r.event_id, r.ticket_code, r.status, r.registration_date, r.qr_code_data, r.team_name, r.created_at, r.updated_at,
+              COALESCE(r.attendance_status, CASE WHEN r.status = 'attended' THEN 'present' ELSE 'unmarked' END) as attendance_status,
               u.id as user_id, u.name as user_name, u.email as user_email, u.student_id as user_student_id,
-              u.department as user_department, u.phone as user_phone
+              u.department as user_department, u.phone as user_phone, u.avatar as user_avatar,
+              a.checked_in_at as attended_at, a.scan_method
        FROM event_registrations r
        JOIN users u ON r.user_id = u.id
-       WHERE r.event_id = $1 AND r.status != 'cancelled'
+       LEFT JOIN attendances a ON a.student_id = r.user_id AND a.event_id = r.event_id
+       WHERE r.event_id = $1
        ORDER BY r.registration_date ASC`,
       [eventId]
     );
 
-    const participants = attendeesRes.rows.map(mapRegistration);
+    // Compute Metrics
+    let totalRegistered = 0;
+    let checkedInCount = 0;
+    let absentCount = 0;
+    let unmarkedCount = 0;
+
+    const registrations = attendeesRes.rows.map((row) => {
+      const isPresent = row.status === 'attended' || row.attendance_status === 'present' || !!row.attended_at;
+      const attStatus = isPresent ? 'present' : (row.attendance_status || (row.status === 'cancelled' ? 'cancelled' : 'unmarked'));
+
+      if (row.status !== 'cancelled') {
+        totalRegistered++;
+        if (isPresent) {
+          checkedInCount++;
+        } else if (attStatus === 'absent') {
+          absentCount++;
+        } else {
+          unmarkedCount++;
+        }
+      }
+
+      const resolvedCreatedAt = row.registration_date || row.created_at || new Date().toISOString();
+
+      return {
+        _id: row.registration_id,
+        id: row.registration_id,
+        registrationId: row.registration_id,
+        eventId: row.event_id,
+        ticketCode: row.ticket_code,
+        status: row.status,
+        attendanceStatus: isPresent ? 'present' : attStatus,
+        isPresent,
+        registrationDate: resolvedCreatedAt,
+        createdAt: resolvedCreatedAt,
+        attendedAt: row.attended_at || null,
+        scanMethod: row.scan_method || null,
+        teamName: row.team_name || null,
+        qrCodeData: row.qr_code_data,
+        fullName: row.user_name || '',
+        name: row.user_name || '',
+        rollNumber: row.user_student_id || '',
+        studentId: row.user_student_id || '',
+        department: row.user_department || 'General',
+        email: row.user_email || '',
+        avatar: row.user_avatar || '',
+        phone: row.user_phone || '',
+        user: {
+          _id: row.user_id,
+          id: row.user_id,
+          name: row.user_name || '',
+          fullName: row.user_name || '',
+          email: row.user_email || '',
+          studentId: row.user_student_id || '',
+          rollNumber: row.user_student_id || '',
+          department: row.user_department || 'General',
+          avatar: row.user_avatar || '',
+          phone: row.user_phone || '',
+        },
+      };
+    });
+
+    const maxCapacity = Number(rawEvent.max_capacity) || 100;
+    const attendanceRate = totalRegistered > 0 ? Math.round((checkedInCount / totalRegistered) * 100) : 0;
+    const openSeats = Math.max(0, maxCapacity - totalRegistered);
+
+    const stats = {
+      totalRegistered,
+      maxCapacity,
+      capacity: maxCapacity,
+      checkedIn: checkedInCount,
+      attended: checkedInCount,
+      present: checkedInCount,
+      absent: absentCount,
+      unmarked: unmarkedCount,
+      attendanceRate,
+      openSeats,
+    };
+
     res.status(200).json({
       success: true,
-      count: participants.length,
-      participants,
-      attendees: participants,
+      event,
+      count: registrations.length,
+      registrations,
+      participants: registrations,
+      attendees: registrations,
+      stats,
     });
   } catch (error) {
-    console.error('Error in getEventParticipants:', error);
-    res.status(500).json({ success: false, message: 'Failed to retrieve participants.' });
+    console.error('Error in getEventRegistrations:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve event registrations.' });
   }
 };
+
+/**
+ * Backward compatibility alias
+ */
+export const getEventParticipants = getEventRegistrations;
 
 /**
  * Export Event Participants to CSV
  */
 export const exportParticipantsCSV = async (req, res) => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.id || req.params.eventId;
 
-    const eventRes = await query('SELECT title FROM events WHERE id = $1', [eventId]);
-    const eventTitle = eventRes.rows[0]?.title || 'event';
+    if (!eventId) {
+      return res.status(400).json({ success: false, message: 'Event ID is required.' });
+    }
+
+    const eventRes = await query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
+    }
+
+    const rawEvent = eventRes.rows[0];
+    const eventTitle = rawEvent.title || 'event';
+
+    // Authorization check
+    const currentUser = req.user;
+    const isSuperAdmin = currentUser && currentUser.role === 'admin';
+    const isOwnerOrganizer = currentUser && String(rawEvent.creator_id) === String(currentUser.id || currentUser._id);
+
+    if (!isSuperAdmin && !isOwnerOrganizer) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You are not authorized to export registrations for this event.',
+      });
+    }
 
     const participantsRes = await query(
       `SELECT u.name, u.email, u.student_id, u.department, u.phone,
-              r.ticket_code, r.status, r.team_name, r.registration_date
+              r.ticket_code, r.status, r.team_name, r.registration_date,
+              COALESCE(r.attendance_status, CASE WHEN r.status = 'attended' THEN 'present' ELSE 'unmarked' END) as attendance_status,
+              a.checked_in_at as attended_at
        FROM event_registrations r
        JOIN users u ON r.user_id = u.id
+       LEFT JOIN attendances a ON a.student_id = r.user_id AND a.event_id = r.event_id
        WHERE r.event_id = $1 AND r.status != 'cancelled'
        ORDER BY r.registration_date ASC`,
       [eventId]
     );
 
-    let csv = 'Student Name,Email,Student ID,Department,Phone,Ticket Code,Status,Team Name,Registration Date\n';
+    let csv = 'Student Name,Roll Number,Department,Email,Phone,Ticket Code,Registration Date,Attendance Status,Present,Team Name\n';
     for (const p of participantsRes.rows) {
       const regDate = p.registration_date ? new Date(p.registration_date).toISOString() : '';
-      csv += `"${(p.name || '').replace(/"/g, '""')}","${p.email}","${p.student_id || ''}","${p.department || ''}","${p.phone || ''}","${p.ticket_code}","${p.status}","${p.team_name || ''}","${regDate}"\n`;
+      const isPresent = p.status === 'attended' || p.attendance_status === 'present' || !!p.attended_at ? 'Yes' : 'No';
+      const attStatus = isPresent === 'Yes' ? 'Present' : (p.attendance_status === 'absent' ? 'Absent' : 'Confirmed');
+
+      const safeName = (p.name || '').replace(/"/g, '""');
+      const safeRoll = (p.student_id || '').replace(/"/g, '""');
+      const safeDept = (p.department || '').replace(/"/g, '""');
+      const safeEmail = (p.email || '').replace(/"/g, '""');
+      const safePhone = (p.phone || '').replace(/"/g, '""');
+      const safeTeam = (p.team_name || '').replace(/"/g, '""');
+
+      csv += `"${safeName}","${safeRoll}","${safeDept}","${safeEmail}","${safePhone}","${p.ticket_code}","${regDate}","${attStatus}","${isPresent}","${safeTeam}"\n`;
     }
 
     res.setHeader('Content-Type', 'text/csv');

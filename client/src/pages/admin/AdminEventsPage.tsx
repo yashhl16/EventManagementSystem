@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Calendar,
   Search,
@@ -18,6 +19,7 @@ import {
   UserCheck,
   UserX,
   RotateCcw,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { adminService } from '../../services/api';
 import { CollegeEvent, CertificateTemplateConfig } from '../../types';
@@ -673,6 +675,16 @@ export const AdminEventsPage: React.FC = () => {
                             <Users className="h-3.5 w-3.5" />
                             <span>Attendance</span>
                           </button>
+
+                          {/* Dedicated Registration Roster Dashboard */}
+                          <Link
+                            to={`/admin/events/${eventId}/registrations`}
+                            title="Open Full Registration Roster Dashboard"
+                            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
+                          >
+                            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Roster</span>
+                          </Link>
 
                           {/* Quick Publish / Unpublish Toggle */}
                           {evt.status === 'approved' ? (

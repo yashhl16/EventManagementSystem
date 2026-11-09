@@ -1711,6 +1711,124 @@ async function runTests() {
       'Test Case 34h: Organizer updates custom certificate template URL via PUT /events/:id'
     );
 
+    // ==========================================
+    // TEST CASE 35: Registration Management Dashboard, RBAC & CSV Export
+    // ==========================================
+    // 35a: Organizer accesses GET /api/organizer/events/:id/registrations
+    const orgRosterRes = await fetch(`${BASE_URL}/organizer/events/${templateEventId}/registrations`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const orgRosterData = await orgRosterRes.json();
+    assert(
+      orgRosterRes.status === 200 &&
+        orgRosterData.success &&
+        Array.isArray(orgRosterData.registrations) &&
+        orgRosterData.registrations.length >= 1,
+      'Test Case 35a: Organizer fetches event registrations roster successfully'
+    );
+
+    // 35b: Roster items contain populated student profile attributes (fullName, rollNumber, department, email, isPresent)
+    const attendeeItem = orgRosterData.registrations.find((r) => r.ticketCode === templateTicketCode);
+    assert(
+      attendeeItem &&
+        attendeeItem.fullName &&
+        attendeeItem.email &&
+        attendeeItem.department &&
+        attendeeItem.ticketCode === templateTicketCode &&
+        attendeeItem.isPresent === true &&
+        attendeeItem.attendanceStatus === 'present' &&
+        !!attendeeItem.createdAt,
+      'Test Case 35b: Registration items return populated student attributes (fullName, rollNumber, department, email, createdAt, isPresent)'
+    );
+
+    // 35c: Quick Analytics counters in API response
+    assert(
+      orgRosterData.stats &&
+        orgRosterData.stats.totalRegistered >= 1 &&
+        orgRosterData.stats.maxCapacity === 80 &&
+        orgRosterData.stats.checkedIn >= 1 &&
+        orgRosterData.stats.attendanceRate > 0 &&
+        typeof orgRosterData.stats.openSeats === 'number',
+      'Test Case 35c: Event registrations returns accurate stats (totalRegistered, maxCapacity, checkedIn, attendanceRate, openSeats)'
+    );
+
+    // 35d: Student cannot access organizer registrations endpoint (403 Forbidden)
+    const studentAccessRes = await fetch(`${BASE_URL}/organizer/events/${templateEventId}/registrations`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    assert(
+      studentAccessRes.status === 403,
+      'Test Case 35d: Student role is rejected with 403 Forbidden on organizer registrations endpoint'
+    );
+
+    // 35e: Another organizer cannot access events they do not own (403 Forbidden)
+    const otherOrgRegRes = await fetch(`${BASE_URL}/auth/organizer/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Professor Charles Xavier',
+        fullName: 'Professor Charles Xavier',
+        email: 'charles.xavier@campus.edu',
+        password: 'Password123!',
+        department: 'Computer Science',
+        organizationName: 'Robotics Department Club',
+        phone: '9876543299',
+      }),
+    });
+    const otherOrgRegData = await otherOrgRegRes.json();
+    const otherOrgToken = otherOrgRegData.token;
+
+    const otherOrgAccessRes = await fetch(`${BASE_URL}/organizer/events/${templateEventId}/registrations`, {
+      headers: { Authorization: `Bearer ${otherOrgToken}` },
+    });
+    assert(
+      otherOrgAccessRes.status === 403,
+      'Test Case 35e: Non-owner organizer is rejected with 403 Forbidden when accessing another organizer roster'
+    );
+
+    // 35f: Admin can access any event registrations roster
+    const adminRosterRes = await fetch(`${BASE_URL}/organizer/events/${templateEventId}/registrations`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    const adminRosterData = await adminRosterRes.json();
+    assert(
+      adminRosterRes.status === 200 &&
+        adminRosterData.success &&
+        adminRosterData.registrations.length >= 1,
+      'Test Case 35f: Administrator has global access to inspect registrations for any event'
+    );
+
+    // 35g: CSV Export endpoint returns formatted CSV data with required headers
+    const csvExportRes = await fetch(`${BASE_URL}/organizer/events/${templateEventId}/export-csv`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const rosterCsvText = await csvExportRes.text();
+    assert(
+      csvExportRes.status === 200 &&
+        rosterCsvText.includes('Student Name') &&
+        rosterCsvText.includes('Roll Number') &&
+        rosterCsvText.includes('Department') &&
+        rosterCsvText.includes('Email') &&
+        rosterCsvText.includes('Ticket Code') &&
+        rosterCsvText.includes(templateTicketCode),
+      'Test Case 35g: Organizer CSV export endpoint returns CSV content with student details and ticket pass'
+    );
+
+    // 35h: Admin global registrations endpoint GET /api/admin/registrations
+    const globalRegRes = await fetch(`${BASE_URL}/admin/registrations`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    const globalRegData = await globalRegRes.json();
+    assert(
+      globalRegRes.status === 200 &&
+        globalRegData.success &&
+        Array.isArray(globalRegData.registrations) &&
+        globalRegData.registrations.length >= 1 &&
+        typeof globalRegData.total === 'number' &&
+        typeof globalRegData.attendanceRate === 'number',
+      'Test Case 35h: Administrator accesses campus-wide registrations directory with global metrics'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

@@ -5,6 +5,7 @@ import {
   joinTeam,
   cancelRegistration,
   getMyRegistrations,
+  getEventRegistrations,
   getEventParticipants,
   exportParticipantsCSV,
 } from '../controllers/registrationController.js';
@@ -21,7 +22,10 @@ router.put('/:registrationId/cancel', protect, cancelRegistration);
 router.get('/my', protect, getMyRegistrations);
 
 // Organizer / Admin Roster & CSV Export
-router.get('/event/:eventId', protect, requireAnyRole(['organizer', 'admin']), getEventParticipants);
+router.get('/event/:eventId', protect, requireAnyRole(['organizer', 'admin']), getEventRegistrations);
+router.get('/event/:eventId/registrations', protect, requireAnyRole(['organizer', 'admin']), getEventRegistrations);
+router.get('/events/:eventId/registrations', protect, requireAnyRole(['organizer', 'admin']), getEventRegistrations);
 router.get('/event/:eventId/export-csv', protect, requireAnyRole(['organizer', 'admin']), exportParticipantsCSV);
+router.get('/events/:eventId/export-csv', protect, requireAnyRole(['organizer', 'admin']), exportParticipantsCSV);
 
 export default router;

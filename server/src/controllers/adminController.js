@@ -1245,4 +1245,137 @@ export const exportAttendanceCSV = async (req, res) => {
   }
 };
 
+/**
+ * Get Global Registrations Across All Events (Admin Portal)
+ */
+export const getGlobalRegistrations = async (req, res) => {
+  try {
+    const { eventId, search, status, department, limit = 500, offset = 0 } = req.query;
+
+    let queryText = `
+      SELECT 
+        r.id as registration_id,
+        r.event_id,
+        r.user_id,
+        r.ticket_code,
+        r.status as registration_status,
+        COALESCE(r.attendance_status, CASE WHEN r.status = 'attended' THEN 'present' ELSE 'unmarked' END) as attendance_status,
+        r.registration_date,
+        r.created_at,
+        r.team_name,
+        u.id as user_id,
+        u.name as user_name,
+        u.email as user_email,
+        u.student_id as user_student_id,
+        u.department as user_department,
+        u.avatar as user_avatar,
+        u.phone as user_phone,
+        e.title as event_title,
+        e.category as event_category,
+        e.event_date,
+        e.start_time,
+        e.venue,
+        a.checked_in_at as attended_at
+      FROM event_registrations r
+      JOIN users u ON r.user_id = u.id
+      JOIN events e ON r.event_id = e.id
+      LEFT JOIN attendances a ON a.student_id = r.user_id AND a.event_id = r.event_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (eventId) {
+      params.push(eventId);
+      queryText += ` AND r.event_id = $${params.length}`;
+    }
+
+    if (search && search.trim()) {
+      params.push(`%${search.trim().toLowerCase()}%`);
+      queryText += ` AND (LOWER(u.name) LIKE $${params.length} OR LOWER(u.email) LIKE $${params.length} OR LOWER(u.student_id) LIKE $${params.length} OR LOWER(r.ticket_code) LIKE $${params.length} OR LOWER(e.title) LIKE $${params.length})`;
+    }
+
+    if (status && status !== 'all') {
+      params.push(status);
+      queryText += ` AND (COALESCE(r.attendance_status, CASE WHEN r.status = 'attended' THEN 'present' ELSE 'unmarked' END) = $${params.length} OR r.status = $${params.length})`;
+    }
+
+    if (department && department !== 'all') {
+      params.push(department);
+      queryText += ` AND LOWER(u.department) = LOWER($${params.length})`;
+    }
+
+    queryText += ` ORDER BY r.registration_date DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(Number(limit) || 500, Number(offset) || 0);
+
+    const result = await query(queryText, params);
+
+    const registrations = result.rows.map((row) => {
+      const isPresent = row.registration_status === 'attended' || row.attendance_status === 'present' || !!row.attended_at;
+      const attStatus = isPresent ? 'present' : (row.attendance_status || (row.registration_status === 'cancelled' ? 'cancelled' : 'unmarked'));
+      const resolvedDate = row.registration_date || row.created_at || new Date().toISOString();
+
+      return {
+        _id: row.registration_id,
+        id: row.registration_id,
+        registrationId: row.registration_id,
+        eventId: row.event_id,
+        ticketCode: row.ticket_code,
+        status: row.registration_status,
+        attendanceStatus: attStatus,
+        isPresent,
+        registrationDate: resolvedDate,
+        createdAt: resolvedDate,
+        attendedAt: row.attended_at || null,
+        teamName: row.team_name,
+        fullName: row.user_name || '',
+        name: row.user_name || '',
+        rollNumber: row.user_student_id || '',
+        studentId: row.user_student_id || '',
+        department: row.user_department || 'General',
+        email: row.user_email || '',
+        avatar: row.user_avatar || '',
+        phone: row.user_phone || '',
+        user: {
+          id: row.user_id,
+          name: row.user_name,
+          fullName: row.user_name,
+          email: row.user_email,
+          studentId: row.user_student_id,
+          rollNumber: row.user_student_id,
+          department: row.user_department,
+          avatar: row.user_avatar,
+          phone: row.user_phone,
+        },
+        event: {
+          id: row.event_id,
+          title: row.event_title,
+          category: row.event_category,
+          eventDate: row.event_date,
+          startTime: row.start_time,
+          venue: row.venue,
+        },
+      };
+    });
+
+    const totalCountRes = await query('SELECT COUNT(*) as total FROM event_registrations WHERE status != \'cancelled\'');
+    const totalAttendedRes = await query("SELECT COUNT(*) as total FROM event_registrations WHERE status = 'attended' OR attendance_status = 'present'");
+
+    const total = parseInt(totalCountRes.rows[0]?.total, 10) || registrations.length;
+    const attended = parseInt(totalAttendedRes.rows[0]?.total, 10) || 0;
+
+    res.status(200).json({
+      success: true,
+      count: registrations.length,
+      total,
+      attended,
+      attendanceRate: total > 0 ? Math.round((attended / total) * 100) : 0,
+      registrations,
+    });
+  } catch (error) {
+    console.error('Error in getGlobalRegistrations:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve global registrations.' });
+  }
+};
+
+
 

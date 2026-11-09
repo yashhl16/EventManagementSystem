@@ -18,6 +18,7 @@ import submissionRoutes from './routes/submissionRoutes.js';
 import { protect, requireAnyRole } from './middleware/auth.js';
 import { updateProfile, getMe } from './controllers/authController.js';
 import { markAttendance, getPassDetails } from './controllers/attendanceController.js';
+import { getEventRegistrations, exportParticipantsCSV } from './controllers/registrationController.js';
 
 dotenv.config();
 
@@ -99,6 +100,28 @@ app.get(
   protect,
   requireAnyRole(['organizer', 'admin']),
   getPassDetails
+);
+app.get(
+  [
+    '/api/organizer/events/:id/registrations',
+    '/organizer/events/:id/registrations',
+    '/api/organizer/events/:eventId/registrations',
+    '/organizer/events/:eventId/registrations',
+  ],
+  protect,
+  requireAnyRole(['organizer', 'admin']),
+  getEventRegistrations
+);
+app.get(
+  [
+    '/api/organizer/events/:id/export-csv',
+    '/organizer/events/:id/export-csv',
+    '/api/organizer/events/:eventId/export-csv',
+    '/organizer/events/:eventId/export-csv',
+  ],
+  protect,
+  requireAnyRole(['organizer', 'admin']),
+  exportParticipantsCSV
 );
 app.use(['/api/auth', '/auth'], authRoutes);
 app.use(['/api/events', '/events'], eventRoutes);

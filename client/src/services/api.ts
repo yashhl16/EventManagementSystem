@@ -112,6 +112,9 @@ export const registrationService = {
   getEventParticipants: (eventId: string, params?: any) =>
     api.get(`/registrations/event/${eventId}`, { params }),
 
+  getEventRegistrations: (eventId: string, params?: any) =>
+    api.get(`/organizer/events/${eventId}/registrations`, { params }),
+
   exportParticipantsCSV: (eventId: string) =>
     api.get(`/registrations/event/${eventId}/export-csv`, { responseType: 'blob' }),
 };
@@ -192,6 +195,8 @@ export const adminService = {
   createAdminAccount: (data: any) => api.post('/admin/users/create-admin', data),
 
   getAuditLogs: (params?: any) => api.get('/admin/audit-logs', { params }),
+
+  getAllRegistrations: (params?: any) => api.get('/admin/registrations', { params }),
 };
 
 /* ================= ANNOUNCEMENT & NOTIFICATION API ================= */

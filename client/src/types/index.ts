@@ -125,6 +125,15 @@ export interface Registration {
   };
   status: RegistrationStatus;
   attendanceStatus?: 'present' | 'absent' | 'unmarked' | string;
+  isPresent?: boolean;
+  fullName?: string;
+  rollNumber?: string;
+  studentId?: string;
+  department?: string;
+  email?: string;
+  avatar?: string;
+  phone?: string;
+  scanMethod?: string;
   qrCodeData: string;
   registeredAt?: string;
   registrationDate?: string;

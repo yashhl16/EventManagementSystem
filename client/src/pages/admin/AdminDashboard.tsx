@@ -116,13 +116,15 @@ export const AdminDashboard: React.FC = () => {
           icon={<Clock className="h-5 w-5" />}
           color="amber"
         />
-        <StatCard
-          title="Campus Registrations"
-          value={data?.participation?.totalRegistrations || 0}
-          subtitle={`${data?.participation?.totalAttended || 0} QR verified`}
-          icon={<Calendar className="h-5 w-5" />}
-          color="emerald"
-        />
+        <Link to="/admin/events" className="block transition transform hover:-translate-y-0.5">
+          <StatCard
+            title="Campus Registrations"
+            value={data?.participation?.totalRegistrations || 0}
+            subtitle={`${data?.participation?.totalAttended || 0} QR verified • Inspect rosters`}
+            icon={<Calendar className="h-5 w-5" />}
+            color="emerald"
+          />
+        </Link>
         <StatCard
           title="Participation Turnout"
           value={`${data?.participation?.attendanceRate || 0}%`}

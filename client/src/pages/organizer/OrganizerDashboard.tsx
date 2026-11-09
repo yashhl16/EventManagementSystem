@@ -66,7 +66,7 @@ export const OrganizerDashboard: React.FC = () => {
             Event Management Studio
           </h1>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Publish events, verify QR entry tickets, export rosters, and dispatch verified certificates.
+            Publish events, verify QR entry tickets, track attendee registrations, and dispatch verified certificates.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export const OrganizerDashboard: React.FC = () => {
               My Created Events
             </h2>
             <p className="text-xs text-slate-400">
-              Manage live rosters, edit details, track attendance, and issue certificates
+              Manage live attendee rosters, edit details, track attendance, and issue certificates
             </p>
           </div>
 
@@ -184,14 +184,18 @@ export const OrganizerDashboard: React.FC = () => {
                     >
                       {/* Title & Banner */}
                       <td className="py-3 px-3">
-                        <div className="flex items-center gap-3">
+                        <Link
+                          to={`/organizer/events/${event._id}`}
+                          className="flex items-center gap-3 group"
+                          title="Manage Event Registrations & Attendee Roster"
+                        >
                           <img
                             src={event.bannerImage}
                             alt={event.title}
-                            className="h-12 w-16 rounded-lg object-cover shrink-0"
+                            className="h-12 w-16 rounded-lg object-cover shrink-0 group-hover:opacity-90 transition"
                           />
                           <div>
-                            <p className="font-bold text-slate-900 dark:text-white line-clamp-1">
+                            <p className="font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 transition">
                               {event.title}
                             </p>
                             <div className="mt-0.5 flex items-center gap-1.5">
@@ -199,7 +203,7 @@ export const OrganizerDashboard: React.FC = () => {
                               <span className="text-[11px] text-slate-400">{event.venue}</span>
                             </div>
                           </div>
-                        </div>
+                        </Link>
                       </td>
 
                       {/* Schedule */}
@@ -240,15 +244,15 @@ export const OrganizerDashboard: React.FC = () => {
                       <td className="py-3 px-3 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <Link
-                            to={`/organizer/events/${event._id}/roster`}
-                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                            title="Manage Roster & Attendance"
+                            to={`/organizer/events/${event._id}`}
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
+                            title="Manage Registrations & Attendee Roster"
                           >
-                            Roster & Pass
+                            Registrations & Roster
                           </Link>
                           <Link
                             to={`/organizer/edit-event/${event._id}`}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition"
                             title="Edit Event"
                           >
                             <Edit className="h-4 w-4" />
