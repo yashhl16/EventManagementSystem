@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   ShieldCheck,
   Search,
@@ -8,18 +8,25 @@ import {
   Building,
   CheckCircle2,
   XCircle,
-  ExternalLink,
+  Download,
+  Printer,
+  FileCheck,
 } from 'lucide-react';
 import { certificateService } from '../../services/api';
 import { Button } from '../../components/common/Button';
 import { CategoryBadge } from '../../components/common/Badge';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
+import {
+  downloadCertificateAsPDF,
+  printCertificateWindow,
+} from '../../utils/certificatePdfRenderer';
 
 export const VerifyCertificatePage: React.FC = () => {
-  const { code: urlCode } = useParams<{ code?: string }>();
+  const { code: urlCode, id: urlId } = useParams<{ code?: string; id?: string }>();
+  const initialCode = urlCode || urlId || '';
 
-  const [inputCode, setInputCode] = useState(urlCode || '');
+  const [inputCode, setInputCode] = useState(initialCode);
   const [certData, setCertData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -50,11 +57,11 @@ export const VerifyCertificatePage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (urlCode) {
-      setInputCode(urlCode);
-      handleVerify(urlCode);
+    if (initialCode) {
+      setInputCode(initialCode);
+      handleVerify(initialCode);
     }
-  }, [urlCode]);
+  }, [initialCode]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -62,7 +69,7 @@ export const VerifyCertificatePage: React.FC = () => {
 
       <main className="flex-1 mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-12 w-full space-y-8">
         <div className="text-center max-w-xl mx-auto">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400 shadow-sm">
             <ShieldCheck className="h-7 w-7" />
           </div>
           <h1 className="mt-4 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white font-serif">
@@ -101,7 +108,7 @@ export const VerifyCertificatePage: React.FC = () => {
         {/* Verification Result Card */}
         {certData && (
           <div className="rounded-3xl border-2 border-emerald-500/40 bg-white p-8 shadow-xl dark:border-emerald-600/30 dark:bg-slate-900 relative overflow-hidden">
-            <div className="absolute top-0 right-0 rounded-bl-2xl bg-emerald-500 px-4 py-1 text-xs font-bold text-white flex items-center gap-1.5">
+            <div className="absolute top-0 right-0 rounded-bl-2xl bg-emerald-500 px-4 py-1 text-xs font-bold text-white flex items-center gap-1.5 shadow-sm">
               <CheckCircle2 className="h-4 w-4" />
               OFFICIALLY VERIFIED
             </div>
@@ -116,7 +123,7 @@ export const VerifyCertificatePage: React.FC = () => {
                   {certData.studentName}
                 </h2>
                 <p className="text-xs text-slate-400 font-mono">
-                  Certificate Code: {certData.certificateCode}
+                  Certificate Code: {certData.certificateNumber || certData.certificateCode}
                 </p>
               </div>
             </div>
@@ -158,7 +165,7 @@ export const VerifyCertificatePage: React.FC = () => {
                   Issued On
                 </span>
                 <p className="font-medium text-slate-700 dark:text-slate-300">
-                  {new Date(certData.issueDate).toLocaleDateString('en-US', {
+                  {new Date(certData.issueDate || certData.issuedAt || '').toLocaleDateString('en-US', {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
@@ -172,6 +179,26 @@ export const VerifyCertificatePage: React.FC = () => {
               <span className="font-bold text-emerald-600 dark:text-emerald-400">
                 ● Authentic Record
               </span>
+            </div>
+
+            {/* Actions: Download PDF and Print */}
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-5 dark:border-slate-800">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => printCertificateWindow(certData)}
+                leftIcon={<Printer className="h-4 w-4" />}
+              >
+                Print Official Copy
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => downloadCertificateAsPDF(certData)}
+                leftIcon={<Download className="h-4 w-4" />}
+              >
+                Download Verified PDF
+              </Button>
             </div>
           </div>
         )}

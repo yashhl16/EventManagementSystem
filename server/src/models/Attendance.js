@@ -8,6 +8,10 @@ const attendanceSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    eventId: {
+      type: String,
+      index: true,
+    },
     registration: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Registration',
@@ -20,10 +24,18 @@ const attendanceSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    userId: {
+      type: String,
+      index: true,
+    },
     markedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    attendedAt: {
+      type: Date,
+      default: Date.now,
     },
     verificationMethod: {
       type: String,

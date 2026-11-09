@@ -10,16 +10,30 @@ const certificateSchema = new mongoose.Schema(
       uppercase: true,
       trim: true,
     },
+    certificateNumber: {
+      type: String,
+      index: true,
+      uppercase: true,
+      trim: true,
+    },
     event: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Event',
       required: true,
       index: true,
     },
+    eventId: {
+      type: String,
+      index: true,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
+    },
+    userId: {
+      type: String,
       index: true,
     },
     studentName: {
@@ -41,6 +55,14 @@ const certificateSchema = new mongoose.Schema(
     issueDate: {
       type: Date,
       default: Date.now,
+    },
+    issuedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    pdfUrl: {
+      type: String,
+      default: '',
     },
     issuedBy: {
       type: mongoose.Schema.Types.ObjectId,

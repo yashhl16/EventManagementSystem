@@ -1,6 +1,7 @@
 import crypto from 'crypto';
-import { query } from '../config/db.js';
+import { query, mapCertificate } from '../config/db.js';
 import { generateCertificateCode } from '../utils/qrHelper.js';
+import { ensureCertificateForAttendance } from './attendanceController.js';
 
 /**
  * Issue Certificates for All Attended Participants in an Event (Organizer/Admin)
@@ -26,11 +27,10 @@ export const issueCertificatesForEvent = async (req, res) => {
       `SELECT r.*, u.name as user_name, u.student_id as user_student_id, u.email as user_email
        FROM event_registrations r
        JOIN users u ON r.user_id = u.id
+       LEFT JOIN certificates c ON c.student_id = r.user_id AND c.event_id = r.event_id
        WHERE r.event_id = $1 
          AND r.status = 'attended'
-         AND NOT EXISTS (
-           SELECT 1 FROM certificates c WHERE c.student_id = r.user_id AND c.event_id = r.event_id
-         )`,
+         AND c.id IS NULL`,
       [eventId]
     );
 
@@ -44,40 +44,14 @@ export const issueCertificatesForEvent = async (req, res) => {
 
     let issuedCount = 0;
     for (const reg of regRes.rows) {
-      const code = generateCertificateCode();
-      const certId = crypto.randomUUID();
-      const verificationUrl = `/verify/${code}`;
-
-      await query(
-        `INSERT INTO certificates (id, certificate_code, student_id, event_id, student_name, student_roll, event_title, issue_date, issued_by, verification_url, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, NOW())`,
-        [
-          certId,
-          code,
-          reg.user_id,
-          event.id,
-          reg.user_name,
-          reg.user_student_id || '',
-          event.title,
-          issuerId,
-          verificationUrl,
-        ]
-      );
-
-      // Notify recipient
-      await query(
-        `INSERT INTO notifications (id, recipient_id, title, message, type, link, is_read, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, false, NOW())`,
-        [
-          crypto.randomUUID(),
-          reg.user_id,
-          'Certificate of Participation Issued! 🎓',
-          `Your verified certificate for "${event.title}" is ready. Certificate ID: ${code}.`,
-          'certificate',
-          '/certificates',
-        ]
-      ).catch(() => {});
-
+      await ensureCertificateForAttendance({
+        eventId: event.id,
+        userId: reg.user_id,
+        studentName: reg.user_name,
+        studentRoll: reg.user_student_id,
+        eventTitle: event.title,
+        issuedBy: issuerId,
+      });
       issuedCount++;
     }
 
@@ -98,37 +72,44 @@ export const issueCertificatesForEvent = async (req, res) => {
 export const getMyCertificates = async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;
+
+    // Auto-generate for any attended events missing certificate
+    const unattendedCerts = await query(
+      `SELECT r.event_id, r.user_id, u.name as user_name, u.student_id as user_student_id, e.title as event_title, e.creator_id
+       FROM event_registrations r
+       JOIN users u ON r.user_id = u.id
+       JOIN events e ON r.event_id = e.id
+       LEFT JOIN certificates c ON c.student_id = r.user_id AND c.event_id = r.event_id
+       WHERE r.user_id = $1 
+         AND r.status = 'attended'
+         AND c.id IS NULL`,
+      [userId]
+    );
+
+    for (const row of unattendedCerts.rows) {
+      await ensureCertificateForAttendance({
+        eventId: row.event_id,
+        userId: row.user_id,
+        studentName: row.user_name,
+        studentRoll: row.user_student_id,
+        eventTitle: row.event_title,
+        issuedBy: row.creator_id,
+      });
+    }
+
     const certsRes = await query(
       `SELECT c.*, 
-              e.title as event_title, e.category as event_category, e.banner_image as event_banner, e.event_date, e.venue as event_venue
+              e.title as event_title, e.category as event_category, e.banner_image as event_banner, e.event_date, e.venue as event_venue,
+              u.organization_name
        FROM certificates c
        LEFT JOIN events e ON c.event_id = e.id
+       LEFT JOIN users u ON c.issued_by = u.id
        WHERE c.student_id = $1
        ORDER BY c.created_at DESC`,
       [userId]
     );
 
-    const certificates = certsRes.rows.map((row) => ({
-      _id: row.id,
-      id: row.id,
-      certificateCode: row.certificate_code,
-      studentId: row.student_id,
-      studentName: row.student_name,
-      studentRoll: row.student_roll,
-      eventTitle: row.event_title,
-      event: {
-        _id: row.event_id,
-        id: row.event_id,
-        title: row.event_title,
-        category: row.event_category,
-        bannerImage: row.event_banner,
-        eventDate: row.event_date ? (row.event_date.toISOString ? row.event_date.toISOString().split('T')[0] : row.event_date) : '',
-        venue: row.event_venue,
-      },
-      issueDate: row.issue_date,
-      verificationUrl: row.verification_url,
-      createdAt: row.created_at,
-    }));
+    const certificates = certsRes.rows.map(mapCertificate);
 
     res.status(200).json({
       success: true,
@@ -138,6 +119,65 @@ export const getMyCertificates = async (req, res) => {
   } catch (error) {
     console.error('Error in getMyCertificates:', error);
     res.status(500).json({ success: false, message: 'Failed to retrieve certificates.' });
+  }
+};
+
+/**
+ * Get Student's Certificate for a Specific Event
+ */
+export const getEventCertificate = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { eventId } = req.params;
+
+    let certRes = await query(
+      `SELECT c.*, 
+              e.title as event_title, e.category as event_category, e.banner_image as event_banner, e.event_date, e.venue as event_venue,
+              u.organization_name
+       FROM certificates c
+       LEFT JOIN events e ON c.event_id = e.id
+       LEFT JOIN users u ON c.issued_by = u.id
+       WHERE c.student_id = $1 AND c.event_id = $2`,
+      [userId, eventId]
+    );
+
+    if (certRes.rows.length === 0) {
+      // Check if user attended this event, and auto-generate if so
+      const regRes = await query(
+        `SELECT r.*, u.name as user_name, u.student_id as user_student_id, e.title as event_title, e.creator_id
+         FROM event_registrations r
+         JOIN users u ON r.user_id = u.id
+         JOIN events e ON r.event_id = e.id
+         WHERE r.user_id = $1 AND r.event_id = $2 AND r.status = 'attended'`,
+        [userId, eventId]
+      );
+
+      if (regRes.rows.length > 0) {
+        const reg = regRes.rows[0];
+        const generated = await ensureCertificateForAttendance({
+          eventId: reg.event_id,
+          userId: reg.user_id,
+          studentName: reg.user_name,
+          studentRoll: reg.user_student_id,
+          eventTitle: reg.event_title,
+          issuedBy: reg.creator_id,
+        });
+        if (generated) {
+          return res.status(200).json({ success: true, certificate: generated });
+        }
+      }
+
+      return res.status(404).json({ success: false, message: 'No certificate found for this event.' });
+    }
+
+    const cert = mapCertificate(certRes.rows[0]);
+    res.status(200).json({
+      success: true,
+      certificate: cert,
+    });
+  } catch (error) {
+    console.error('Error in getEventCertificate:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve event certificate.' });
   }
 };
 
@@ -156,7 +196,9 @@ export const verifyCertificate = async (req, res) => {
        FROM certificates c
        LEFT JOIN events e ON c.event_id = e.id
        LEFT JOIN users u ON c.issued_by = u.id
-       WHERE UPPER(c.certificate_code) = UPPER($1)`,
+       WHERE UPPER(c.certificate_code) = UPPER($1) 
+          OR UPPER(c.certificate_number) = UPPER($1) 
+          OR c.id = $1`,
       [cleanCode]
     );
 
@@ -167,19 +209,23 @@ export const verifyCertificate = async (req, res) => {
       });
     }
 
-    const cert = certRes.rows[0];
+    const cert = mapCertificate(certRes.rows[0]);
 
     res.status(200).json({
       success: true,
       certificate: {
-        certificateCode: cert.certificate_code,
-        studentName: cert.student_name,
-        studentRoll: cert.student_roll,
-        eventTitle: cert.event_title,
-        eventDate: cert.event_date ? (cert.event_date.toISOString ? cert.event_date.toISOString().split('T')[0] : cert.event_date) : '',
-        category: cert.event_category || 'Campus Event',
-        issueDate: cert.issue_date,
-        issuerOrganization: cert.organization_name || 'College Event Council',
+        certificateCode: cert.certificateCode,
+        certificateNumber: cert.certificateNumber,
+        studentName: cert.studentName,
+        studentRoll: cert.studentRoll,
+        eventTitle: cert.eventTitle,
+        eventDate: cert.eventDate,
+        category: cert.category || 'Campus Event',
+        issueDate: cert.issueDate,
+        issuedAt: cert.issuedAt,
+        issuerOrganization: cert.issuerOrganization || 'College Event Council',
+        verificationUrl: cert.verificationUrl,
+        pdfUrl: cert.pdfUrl,
         status: 'valid',
       },
     });
@@ -189,3 +235,260 @@ export const verifyCertificate = async (req, res) => {
   }
 };
 
+/**
+ * Standalone Certificate Download / Print View Endpoint
+ * Route: GET /api/certificates/download/:code
+ */
+export const getCertificateDownload = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const cleanCode = (code || '').toUpperCase().trim();
+
+    const certRes = await query(
+      `SELECT c.*, 
+              e.title as event_title, e.category as event_category, e.event_date, e.venue as event_venue,
+              u.name as issuer_name, u.organization_name
+       FROM certificates c
+       LEFT JOIN events e ON c.event_id = e.id
+       LEFT JOIN users u ON c.issued_by = u.id
+       WHERE UPPER(c.certificate_code) = UPPER($1) 
+          OR UPPER(c.certificate_number) = UPPER($1) 
+          OR c.id = $1`,
+      [cleanCode]
+    );
+
+    if (certRes.rows.length === 0) {
+      return res.status(404).send('Certificate record not found.');
+    }
+
+    const cert = mapCertificate(certRes.rows[0]);
+    const formattedDate = cert.eventDate
+      ? new Date(cert.eventDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      : 'Official Schedule';
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate of Participation - ${cert.studentName}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .cert-frame {
+      width: 100%;
+      max-width: 1060px;
+      height: 740px;
+      background: #ffffff;
+      padding: 28px;
+      border: 14px double #b45309;
+      border-radius: 12px;
+      position: relative;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .cert-inner {
+      border: 2px solid #cbd5e1;
+      height: 100%;
+      padding: 32px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+    .seal-badge {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 10px;
+      background: linear-gradient(135deg, #d97706, #92400e);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 30px;
+      box-shadow: 0 4px 12px rgba(180, 83, 9, 0.3);
+    }
+    .institution-header {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #b45309;
+      margin-bottom: 4px;
+    }
+    .main-title {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #1e1b4b;
+      margin: 6px 0;
+    }
+    .subtitle {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: #64748b;
+      margin-top: 14px;
+      font-weight: 600;
+    }
+    .recipient {
+      font-size: 40px;
+      font-weight: 800;
+      color: #4338ca;
+      font-style: italic;
+      border-bottom: 2px solid #c7d2fe;
+      display: inline-block;
+      padding: 2px 36px 6px;
+      margin: 10px auto;
+    }
+    .narrative {
+      font-size: 15px;
+      color: #334155;
+      line-height: 1.65;
+      max-width: 780px;
+      margin: 12px auto 0;
+    }
+    .signatures-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 60px;
+      margin-top: 24px;
+    }
+    .sign-box {
+      text-align: center;
+    }
+    .sign-script {
+      font-family: cursive;
+      font-size: 20px;
+      color: #1e293b;
+    }
+    .sign-rule {
+      width: 210px;
+      border-top: 1.5px solid #94a3b8;
+      margin-top: 4px;
+      padding-top: 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #475569;
+      font-weight: 700;
+    }
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 12px;
+      font-size: 11px;
+      color: #64748b;
+      font-family: monospace;
+    }
+    .btn-print {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+    @media print {
+      body {
+        padding: 0;
+        background: none;
+      }
+      .cert-frame {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="btn-print no-print" onclick="window.print()">Print / Save as PDF</button>
+
+  <div class="cert-frame">
+    <div class="cert-inner">
+      <div>
+        <div class="seal-badge">★</div>
+        <div class="institution-header">SGU Academic & Technical Council</div>
+        <div class="main-title">Certificate of Participation</div>
+        <div class="subtitle">This is proudly presented to</div>
+        <div class="recipient">${cert.studentName}</div>
+        <div class="narrative">
+          for active and successful participation in <strong>"${cert.eventTitle}"</strong> organized by <strong>${cert.issuerOrganization}</strong> on ${formattedDate}.
+        </div>
+      </div>
+
+      <div>
+        <div class="signatures-row">
+          <div class="sign-box">
+            <div class="sign-script">Dr. Sarah Mitchell</div>
+            <div class="sign-rule">Faculty Event Coordinator</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-script">Dr. Marcus Vance</div>
+            <div class="sign-rule">Dean of Student Affairs</div>
+          </div>
+        </div>
+
+        <div class="footer-bar">
+          <span>✓ Official Cryptographically Verified Credential</span>
+          <span>Credential ID: <strong>${cert.certificateNumber || cert.certificateCode}</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (window.location.search.includes('autoprint=true')) {
+      window.onload = function() {
+        window.print();
+      };
+    }
+  </script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (error) {
+    console.error('Error in getCertificateDownload:', error);
+    res.status(500).send('Failed to generate certificate download.');
+  }
+};

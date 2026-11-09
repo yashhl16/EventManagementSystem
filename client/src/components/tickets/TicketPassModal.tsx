@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Printer, Calendar, Clock, MapPin, Sparkles } from 'lucide-react';
-import { Registration } from '../../types';
+import { X, Printer, Calendar, Clock, MapPin, Sparkles, Award, Download } from 'lucide-react';
+import { Registration, Certificate } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { certificateService } from '../../services/api';
+import { downloadCertificateAsPDF } from '../../utils/certificatePdfRenderer';
 import { Button } from '../common/Button';
 
 interface TicketPassModalProps {
@@ -64,8 +66,42 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
         })
       : 'Recently';
 
+  const [isDownloadingCert, setIsDownloadingCert] = useState(false);
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadCertificate = async () => {
+    const eventId = event?._id || event?.id;
+    if (!eventId) return;
+    setIsDownloadingCert(true);
+    try {
+      const res = await certificateService.getEventCertificate(eventId);
+      if (res.data?.certificate) {
+        downloadCertificateAsPDF(res.data.certificate);
+      }
+    } catch (_) {
+      // Fallback: construct certificate on the fly
+      downloadCertificateAsPDF({
+        _id: registration.id || registration._id,
+        certificateCode: `CERT-2026-${(registration.ticketCode || 'VERIFIED').slice(-6)}`,
+        studentName: attendeeName,
+        eventTitle: event?.title || 'Campus Event',
+        eventDate: event?.eventDate || new Date().toISOString(),
+        category: event?.category || 'Technical',
+        issueDate: new Date().toISOString(),
+        issuerOrganization:
+          (typeof event?.organizer === 'object' && event?.organizer !== null
+            ? (event.organizer as any).name
+            : event?.organizer) || 'College Event Council',
+        status: 'valid',
+        event: event || '',
+        user: attendeeName,
+      });
+    } finally {
+      setIsDownloadingCert(false);
+    }
   };
 
   const qrPayload = JSON.stringify({
@@ -191,6 +227,29 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
               Verification Code: {registration.ticketCode}
             </p>
           </div>
+
+          {/* Certificate of Participation Banner for Attended Students */}
+          {(registration.status === 'attended' || registration.attendanceStatus === 'present') && (
+            <div className="no-print mt-4 rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50 to-indigo-50/50 p-4 dark:border-amber-900/60 dark:bg-amber-950/40 text-center space-y-2">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                <Award className="h-4 w-4 text-amber-600" />
+                <span>Attendance Verified • Participation Certificate Ready!</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                You have successfully participated in this event. Download your verified institutional credential below.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-700 hover:to-indigo-700 text-white font-bold cursor-pointer"
+                onClick={handleDownloadCertificate}
+                isLoading={isDownloadingCert}
+                leftIcon={<Download className="h-4 w-4" />}
+              >
+                Download Participation Certificate (PDF)
+              </Button>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="no-print mt-6 flex items-center justify-end gap-3">

@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { query, mapUser, mapEvent, mapAuditLog } from '../config/db.js';
+import { ensureCertificateForAttendance } from './attendanceController.js';
 import {
   validateName,
   validateEmail,
@@ -1164,6 +1165,12 @@ export const updateAttendanceStatus = async (req, res) => {
            scan_method = 'admin_roster'`,
         [crypto.randomUUID(), eventId, registrationId, reg.user_id, reg.ticket_code, adminId]
       );
+      // Auto-issue Certificate of Participation for marked attendee
+      await ensureCertificateForAttendance({
+        eventId,
+        userId: reg.user_id,
+        issuedBy: adminId,
+      });
     } else if (status === 'absent') {
       await query(
         `UPDATE event_registrations SET attendance_status = 'absent', status = 'confirmed', updated_at = NOW() WHERE id = $1`,

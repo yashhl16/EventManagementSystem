@@ -121,6 +121,14 @@ export const attendanceService = {
   verifyAndMarkAttendance: (ticketCode: string, eventId?: string) =>
     api.post('/attendance/verify', { ticketCode, eventId }),
 
+  markAttendance: (payload: {
+    ticketCode?: string;
+    eventId?: string;
+    registrationId?: string;
+    studentId?: string;
+    method?: string;
+  }) => api.post('/organizer/mark-attendance', payload),
+
   getEventAttendanceStats: (eventId: string) => api.get(`/attendance/stats/${eventId}`),
 };
 
@@ -128,9 +136,13 @@ export const attendanceService = {
 export const certificateService = {
   getMyCertificates: () => api.get('/certificates/my'),
 
+  getEventCertificate: (eventId: string) => api.get(`/certificates/event/${eventId}`),
+
   issueCertificatesForEvent: (eventId: string) => api.post(`/certificates/issue/${eventId}`),
 
   verifyCertificate: (code: string) => api.get(`/certificates/verify/${code}`),
+
+  downloadCertificateUrl: (code: string) => `${api.defaults.baseURL || '/api'}/certificates/download/${code}`,
 };
 
 /* ================= ADMIN API ================= */

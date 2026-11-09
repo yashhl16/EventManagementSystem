@@ -1,5 +1,105 @@
 import crypto from 'crypto';
-import { query } from '../config/db.js';
+import { query, mapAttendance, mapCertificate } from '../config/db.js';
+import { generateCertificateCode } from '../utils/qrHelper.js';
+
+/**
+ * Helper to ensure a verified Certificate of Participation exists for an attended student
+ */
+export const ensureCertificateForAttendance = async ({
+  eventId,
+  userId,
+  studentName,
+  studentRoll,
+  eventTitle,
+  issuedBy,
+}) => {
+  try {
+    // 1. Check if certificate already exists
+    const existing = await query(
+      `SELECT c.*, 
+              e.title as event_title, e.category as event_category, e.event_date, e.venue as event_venue,
+              u.organization_name
+       FROM certificates c
+       LEFT JOIN events e ON c.event_id = e.id
+       LEFT JOIN users u ON c.issued_by = u.id
+       WHERE c.student_id = $1 AND c.event_id = $2`,
+      [userId, eventId]
+    );
+
+    if (existing.rows.length > 0) {
+      return mapCertificate(existing.rows[0]);
+    }
+
+    // 2. Fetch missing student/event info if needed
+    let name = studentName;
+    let roll = studentRoll;
+    let title = eventTitle;
+    let issuer = issuedBy;
+
+    if (!name || !title) {
+      const userRes = await query('SELECT name, student_id FROM users WHERE id = $1', [userId]);
+      const eventRes = await query('SELECT title, creator_id FROM events WHERE id = $1', [eventId]);
+      if (userRes.rows.length > 0) {
+        name = name || userRes.rows[0].name;
+        roll = roll !== undefined ? roll : (userRes.rows[0].student_id || '');
+      }
+      if (eventRes.rows.length > 0) {
+        title = title || eventRes.rows[0].title;
+        issuer = issuer || eventRes.rows[0].creator_id;
+      }
+    }
+
+    const certCode = generateCertificateCode();
+    const certId = crypto.randomUUID();
+    const verificationUrl = `/verify-certificate/${certCode}`;
+    const pdfUrl = `/api/certificates/download/${certCode}`;
+
+    const insertRes = await query(
+      `INSERT INTO certificates (
+         id, certificate_code, certificate_number, student_id, event_id,
+         student_name, student_roll, event_title, issue_date, issued_by,
+         verification_url, pdf_url, created_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10, $11, NOW())
+       ON CONFLICT (student_id, event_id) DO UPDATE SET
+         certificate_number = COALESCE(certificates.certificate_number, EXCLUDED.certificate_number),
+         pdf_url = COALESCE(certificates.pdf_url, EXCLUDED.pdf_url)
+       RETURNING *`,
+      [
+        certId,
+        certCode,
+        certCode,
+        userId,
+        eventId,
+        name || 'Student Attendee',
+        roll || '',
+        title || 'Campus Event',
+        issuer || null,
+        verificationUrl,
+        pdfUrl,
+      ]
+    );
+
+    // Send in-app notification to student
+    await query(
+      `INSERT INTO notifications (id, recipient_id, title, message, type, link, is_read, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, false, NOW())`,
+      [
+        crypto.randomUUID(),
+        userId,
+        'Certificate of Participation Issued! 🎓',
+        `Your verified certificate for "${title || 'Campus Event'}" is ready. Certificate ID: ${certCode}.`,
+        'certificate',
+        '/certificates',
+      ]
+    ).catch(() => {});
+
+    return mapCertificate(insertRes.rows[0]);
+  } catch (err) {
+    console.error('Error generating certificate for attendance:', err);
+    return null;
+  }
+};
 
 /**
  * Verify Ticket Code and Mark Attendance
@@ -70,6 +170,15 @@ export const verifyAndMarkAttendance = async (req, res) => {
     if (registration.status === 'attended') {
       const attRes = await query('SELECT * FROM attendances WHERE registration_id = $1', [registration.id]);
       const attendedTime = attRes.rows[0]?.checked_in_at || registration.updated_at;
+      const certificate = await ensureCertificateForAttendance({
+        eventId: registration.event_id,
+        userId: registration.user_id,
+        studentName: registration.user_name,
+        studentRoll: registration.user_student_id,
+        eventTitle: registration.event_title,
+        issuedBy: organizerId,
+      });
+
       return res.status(200).json({
         success: true,
         alreadyMarked: true,
@@ -83,6 +192,7 @@ export const verifyAndMarkAttendance = async (req, res) => {
           eventTitle: registration.event_title,
           attendedAt: attendedTime,
         },
+        certificate,
       });
     }
 
@@ -96,16 +206,22 @@ export const verifyAndMarkAttendance = async (req, res) => {
     const now = new Date();
     // Mark as attended
     await query(
-      "UPDATE event_registrations SET status = 'attended', updated_at = NOW() WHERE id = $1",
+      "UPDATE event_registrations SET status = 'attended', attendance_status = 'present', updated_at = NOW() WHERE id = $1",
       [registration.id]
     );
 
-    // Create attendance log
-    await query(
+    // Create or update attendance log
+    const attId = crypto.randomUUID();
+    const attRes = await query(
       `INSERT INTO attendances (id, event_id, registration_id, student_id, ticket_code, checked_in_at, verified_by, scan_method, created_at)
-       VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, NOW())`,
+       VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, NOW())
+       ON CONFLICT (student_id, event_id) DO UPDATE SET
+         checked_in_at = NOW(),
+         verified_by = $6,
+         scan_method = $7
+       RETURNING *`,
       [
-        crypto.randomUUID(),
+        attId,
         registration.event_id,
         registration.id,
         registration.user_id,
@@ -129,10 +245,22 @@ export const verifyAndMarkAttendance = async (req, res) => {
       ]
     ).catch(() => {});
 
+    // Automatically generate verifiable certificate
+    const certificate = await ensureCertificateForAttendance({
+      eventId: registration.event_id,
+      userId: registration.user_id,
+      studentName: registration.user_name,
+      studentRoll: registration.user_student_id,
+      eventTitle: registration.event_title,
+      issuedBy: organizerId,
+    });
+
     res.status(200).json({
       success: true,
       alreadyMarked: false,
       message: `Attendance marked successfully for ${registration.user_name}!`,
+      attendance: mapAttendance(attRes.rows[0]),
+      certificate,
       attendee: {
         name: registration.user_name,
         email: registration.user_email,
@@ -145,6 +273,127 @@ export const verifyAndMarkAttendance = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in verifyAndMarkAttendance:', error);
+    res.status(500).json({ success: false, message: 'Server error marking attendance.' });
+  }
+};
+
+/**
+ * Dedicated Organizer Attendance Marking Endpoint
+ * Route: POST /api/organizer/mark-attendance
+ */
+export const markAttendance = async (req, res) => {
+  try {
+    const organizer = req.user;
+    const organizerId = organizer.id || organizer._id;
+    const { ticketCode, eventId, registrationId, studentId, method } = req.body;
+
+    let whereClause = '';
+    const params = [];
+
+    if (ticketCode) {
+      params.push(ticketCode.trim());
+      whereClause = 'WHERE r.ticket_code = $1';
+    } else if (registrationId) {
+      params.push(registrationId);
+      whereClause = 'WHERE r.id = $1';
+    } else if (studentId && eventId) {
+      params.push(studentId, eventId);
+      whereClause = 'WHERE r.user_id = $1 AND r.event_id = $2';
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide ticketCode, registrationId, or studentId and eventId.',
+      });
+    }
+
+    const regRes = await query(
+      `SELECT r.*, 
+              u.id as user_id, u.name as user_name, u.email as user_email, u.student_id as user_student_id, u.department as user_department,
+              e.id as event_id, e.title as event_title, e.event_date, e.creator_id, e.venue
+       FROM event_registrations r
+       JOIN users u ON r.user_id = u.id
+       JOIN events e ON r.event_id = e.id
+       ${whereClause}`,
+      params
+    );
+    if (regRes.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No matching registration record found.',
+      });
+    }
+
+    const registration = regRes.rows[0];
+
+    // Check authorization
+    if (
+      organizer.role !== 'admin' &&
+      String(registration.creator_id) !== String(organizerId) &&
+      eventId &&
+      String(registration.event_id) !== String(eventId)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to mark attendance for this event.',
+      });
+    }
+
+    const now = new Date();
+
+    // Mark as attended
+    await query(
+      "UPDATE event_registrations SET status = 'attended', attendance_status = 'present', updated_at = NOW() WHERE id = $1",
+      [registration.id]
+    );
+
+    // Upsert attendance
+    const attId = crypto.randomUUID();
+    const attRes = await query(
+      `INSERT INTO attendances (id, event_id, registration_id, student_id, ticket_code, checked_in_at, verified_by, scan_method, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, NOW())
+       ON CONFLICT (student_id, event_id) DO UPDATE SET
+         checked_in_at = NOW(),
+         verified_by = $6,
+         scan_method = $7
+       RETURNING *`,
+      [
+        attId,
+        registration.event_id,
+        registration.id,
+        registration.user_id,
+        registration.ticket_code,
+        organizerId,
+        method || 'manual_organizer',
+      ]
+    );
+
+    // Auto-generate verifiable certificate
+    const certificate = await ensureCertificateForAttendance({
+      eventId: registration.event_id,
+      userId: registration.user_id,
+      studentName: registration.user_name,
+      studentRoll: registration.user_student_id,
+      eventTitle: registration.event_title,
+      issuedBy: organizerId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Attendance marked and certificate issued for ${registration.user_name}!`,
+      attendance: mapAttendance(attRes.rows[0]),
+      certificate,
+      attendee: {
+        name: registration.user_name,
+        email: registration.user_email,
+        studentId: registration.user_student_id,
+        department: registration.user_department,
+        ticketCode: registration.ticket_code,
+        eventTitle: registration.event_title,
+        attendedAt: now,
+      },
+    });
+  } catch (error) {
+    console.error('Error in markAttendance:', error);
     res.status(500).json({ success: false, message: 'Server error marking attendance.' });
   }
 };
@@ -187,4 +436,3 @@ export const getEventAttendanceStats = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch attendance stats.' });
   }
 };
-

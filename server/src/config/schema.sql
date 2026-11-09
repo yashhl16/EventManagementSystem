@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS attendances (
 CREATE TABLE IF NOT EXISTS certificates (
   id VARCHAR(36) PRIMARY KEY,
   certificate_code VARCHAR(50) UNIQUE NOT NULL,
+  certificate_number VARCHAR(50) DEFAULT '',
   student_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE,
   event_id VARCHAR(36) REFERENCES events(id) ON DELETE CASCADE,
   student_name VARCHAR(150) NOT NULL,
@@ -95,6 +96,7 @@ CREATE TABLE IF NOT EXISTS certificates (
   issue_date TIMESTAMPTZ DEFAULT NOW(),
   issued_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
   verification_url TEXT NOT NULL,
+  pdf_url TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

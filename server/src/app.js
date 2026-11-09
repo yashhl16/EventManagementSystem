@@ -15,8 +15,9 @@ import announcementRoutes from './routes/announcementRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
-import { protect } from './middleware/auth.js';
+import { protect, requireAnyRole } from './middleware/auth.js';
 import { updateProfile, getMe } from './controllers/authController.js';
+import { markAttendance } from './controllers/attendanceController.js';
 
 dotenv.config();
 
@@ -80,6 +81,12 @@ app.use(['/api/user/profile', '/user/profile', '/api/users/profile', '/users/pro
   }
   next();
 });
+app.post(
+  ['/api/organizer/mark-attendance', '/organizer/mark-attendance', '/api/organizer/attendance', '/organizer/attendance'],
+  protect,
+  requireAnyRole(['organizer', 'admin']),
+  markAttendance
+);
 app.use(['/api/auth', '/auth'], authRoutes);
 app.use(['/api/events', '/events'], eventRoutes);
 app.use(['/api/registrations', '/registrations'], registrationRoutes);

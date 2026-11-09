@@ -16,10 +16,12 @@ import {
   ShieldCheck,
   UserCheck,
   FileText,
+  Award,
+  Download,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { CollegeEvent, Registration, Team, Submission } from '../../types';
-import { eventService, registrationService, teamService, submissionService } from '../../services/api';
+import { CollegeEvent, Registration, Team, Submission, Certificate } from '../../types';
+import { eventService, registrationService, teamService, submissionService, certificateService } from '../../services/api';
 import { CategoryBadge, StatusBadge, EventLifecycleBadge } from '../../components/common/Badge';
 import { calculateEventStatus } from '../../utils/eventStatus';
 import { Button } from '../../components/common/Button';
@@ -27,6 +29,7 @@ import { ConflictAlertModal } from '../../components/events/ConflictAlertModal';
 import { TeamRegisterModal } from '../../components/events/TeamRegisterModal';
 import { TeamDashboardCard } from '../../components/events/TeamDashboardCard';
 import { EventSubmissionCard } from '../../components/events/EventSubmissionCard';
+import { CertificateModal } from '../../components/certificates/CertificateModal';
 import { TicketPassModal } from '../../components/tickets/TicketPassModal';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
@@ -50,6 +53,8 @@ export const EventDetailsPage: React.FC = () => {
   const [conflictData, setConflictData] = useState<any | null>(null);
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [eventCertificate, setEventCertificate] = useState<Certificate | null>(null);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
 
   const fetchEventData = async () => {
     if (!id) return;
@@ -69,6 +74,15 @@ export const EventDetailsPage: React.FC = () => {
               (r: any) => String(r.event?._id || r.event) === String(id) && r.status !== 'cancelled'
             );
             setExistingRegistration(match || null);
+
+            if (match && (match.status === 'attended' || match.attendanceStatus === 'present')) {
+              try {
+                const certRes = await certificateService.getEventCertificate(id);
+                if (certRes.data?.success && certRes.data?.certificate) {
+                  setEventCertificate(certRes.data.certificate);
+                }
+              } catch (_) {}
+            }
           }
         }
 
@@ -508,6 +522,45 @@ export const EventDetailsPage: React.FC = () => {
                       View QR Entry Pass
                     </Button>
 
+                    {/* Prominent Certificate of Participation for Attended Students */}
+                    {(existingRegistration.status === 'attended' ||
+                      existingRegistration.attendanceStatus === 'present') && (
+                      <div className="rounded-2xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-50 via-white to-indigo-50/50 p-4 dark:border-amber-500/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 space-y-2.5 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                            <Award className="h-4 w-4 text-amber-600" /> Certificate Earned
+                          </span>
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            ✓ Verified
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                          Your attendance was officially verified! Download your verifiable Certificate of Participation.
+                        </p>
+                        <Button
+                          variant="primary"
+                          size="md"
+                          className="w-full bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-700 hover:to-indigo-700 text-white font-bold shadow-md cursor-pointer"
+                          onClick={async () => {
+                            if (eventCertificate) {
+                              setShowCertificateModal(true);
+                            } else {
+                              try {
+                                const res = await certificateService.getEventCertificate(id!);
+                                if (res.data?.certificate) {
+                                  setEventCertificate(res.data.certificate);
+                                  setShowCertificateModal(true);
+                                }
+                              } catch (_) {}
+                            }
+                          }}
+                          leftIcon={<Award className="h-4 w-4" />}
+                        >
+                          Download Participation Certificate
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Quick Deliverable Status in right sidebar */}
                     <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-800/40 space-y-2">
                       <div className="flex items-center justify-between text-xs">
@@ -665,6 +718,13 @@ export const EventDetailsPage: React.FC = () => {
         isOpen={showTicketModal}
         registration={existingRegistration}
         onClose={() => setShowTicketModal(false)}
+      />
+
+      {/* Official Certificate Modal */}
+      <CertificateModal
+        isOpen={showCertificateModal}
+        certificate={eventCertificate}
+        onClose={() => setShowCertificateModal(false)}
       />
     </div>
   );

@@ -1317,6 +1317,116 @@ async function runTests() {
       'Test Case 31b: Profile update rejects full names exceeding 60 characters with 400 Bad Request'
     );
 
+    // 32: Automated Certificate of Participation Generation & Verification System
+    // 32a: Organizer creates an event and student registers
+    const certTestEventRes = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Quantum Computing Hands-on Workshop',
+        description: 'Explore quantum circuits and Qiskit hands-on programming on live simulated qubits.',
+        category: 'Workshop',
+        bannerImage: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80&w=600',
+        eventDate: '2026-11-20',
+        startTime: '10:00',
+        endTime: '16:00',
+        venue: 'Quantum Labs, Block C',
+        maxCapacity: 50,
+        registrationDeadline: '2026-11-19T23:59:59Z',
+      }),
+    });
+    const certTestEventData = await certTestEventRes.json();
+    const certEventId = certTestEventData.event?._id;
+    assert(certTestEventRes.status === 201 && certEventId, 'Test Case 32a: Organizer creates event for certificate generation testing');
+
+    // Admin approves the event
+    await fetch(`${BASE_URL}/admin/events/${certEventId}/approve`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    // Student registers for event
+    const certStudentRegRes = await fetch(`${BASE_URL}/registrations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({ eventId: certEventId, bypassConflict: true }),
+    });
+    const certStudentRegData = await certStudentRegRes.json();
+    const studentTicketCode = certStudentRegData.registration?.ticketCode;
+    assert(certStudentRegRes.status === 201 && !!studentTicketCode, 'Test Case 32b: Student registers and receives ticket pass');
+
+    // 32c: Organizer marks attendance via POST /api/organizer/mark-attendance
+    const markAttRes = await fetch(`${BASE_URL}/organizer/mark-attendance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({ ticketCode: studentTicketCode }),
+    });
+    const markAttData = await markAttRes.json();
+    assert(
+      markAttRes.status === 200 &&
+        markAttData.success &&
+        markAttData.attendance &&
+        markAttData.certificate &&
+        !!markAttData.certificate.certificateCode,
+      'Test Case 32c: Organizer marks attendance via POST /api/organizer/mark-attendance and system auto-generates certificate'
+    );
+    const generatedCertCode = markAttData.certificate?.certificateCode;
+
+    // 32d: Authenticated student retrieves certificates list
+    const myCertsRes = await fetch(`${BASE_URL}/certificates/my`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const myCertsData = await myCertsRes.json();
+    assert(
+      myCertsRes.status === 200 &&
+        myCertsData.success &&
+        myCertsData.certificates.some((c) => c.certificateCode === generatedCertCode),
+      'Test Case 32d: Student retrieves earned certificates list via GET /api/certificates/my'
+    );
+
+    // 32e: Authenticated student retrieves certificate for specific event
+    const eventCertRes = await fetch(`${BASE_URL}/certificates/event/${certEventId}`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const eventCertData = await eventCertRes.json();
+    assert(
+      eventCertRes.status === 200 &&
+        eventCertData.success &&
+        eventCertData.certificate?.certificateCode === generatedCertCode,
+      'Test Case 32e: Student retrieves event-specific certificate via GET /api/certificates/event/:eventId'
+    );
+
+    // 32f: Public verification endpoint verifies authentic certificate
+    const verifyPubRes = await fetch(`${BASE_URL}/certificates/verify/${generatedCertCode}`);
+    const verifyPubData = await verifyPubRes.json();
+    assert(
+      verifyPubRes.status === 200 &&
+        verifyPubData.success &&
+        verifyPubData.certificate?.status === 'valid' &&
+        verifyPubData.certificate?.eventTitle === 'Quantum Computing Hands-on Workshop',
+      'Test Case 32f: Public verification endpoint validates certificate authenticity via /api/certificates/verify/:code'
+    );
+
+    // 32g: Download endpoint streams printable certificate HTML
+    const downloadRes = await fetch(`${BASE_URL}/certificates/download/${generatedCertCode}`);
+    const downloadHtml = await downloadRes.text();
+    assert(
+      downloadRes.status === 200 &&
+        downloadHtml.includes('Certificate of Participation') &&
+        downloadHtml.includes('Quantum Computing Hands-on Workshop') &&
+        downloadHtml.includes(generatedCertCode),
+      'Test Case 32g: Certificate download endpoint streams printable certificate template via /api/certificates/download/:code'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

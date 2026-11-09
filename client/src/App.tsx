@@ -54,6 +54,8 @@ export const App: React.FC = () => {
       <Route path="/events/:id" element={<EventDetailsPage />} />
       <Route path="/calendar" element={<StudentCalendarPage />} />
       <Route path="/verify-certificate" element={<VerifyCertificatePage />} />
+      <Route path="/verify-certificate/:code" element={<VerifyCertificatePage />} />
+      <Route path="/verify-certificate/:id" element={<VerifyCertificatePage />} />
       <Route path="/verify/:code" element={<VerifyCertificatePage />} />
 
       {/* Authentication Portals */}

@@ -102,6 +102,7 @@ export interface Registration {
     joinCode: string;
   };
   status: RegistrationStatus;
+  attendanceStatus?: 'present' | 'absent' | 'unmarked' | string;
   qrCodeData: string;
   registeredAt?: string;
   registrationDate?: string;
@@ -115,17 +116,43 @@ export interface Registration {
 
 export interface Certificate {
   _id: string;
+  id?: string;
   certificateCode: string;
+  certificateNumber?: string;
+  userId?: string;
+  eventId?: string;
+  studentId?: string;
   event: CollegeEvent | string;
   user: User | string;
   studentName: string;
+  studentRoll?: string;
   eventTitle: string;
   eventDate: string;
   category: string;
   issueDate: string;
+  issuedAt?: string;
   issuedBy?: User | string;
   issuerOrganization: string;
+  pdfUrl?: string;
+  verificationUrl?: string;
   status: 'valid' | 'revoked';
+  createdAt?: string;
+}
+
+export interface Attendance {
+  _id?: string;
+  id: string;
+  eventId: string;
+  userId: string;
+  studentId?: string;
+  registrationId?: string;
+  ticketCode?: string;
+  attendedAt: string;
+  checkedInAt?: string;
+  markedBy: string;
+  verifiedBy?: string;
+  scanMethod?: string;
+  createdAt?: string;
 }
 
 export interface Announcement {
