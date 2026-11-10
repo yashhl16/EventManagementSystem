@@ -198,15 +198,6 @@ CREATE TABLE IF NOT EXISTS lft_posts (
   CONSTRAINT unique_lft_user_event UNIQUE (user_id, event_id)
 );
 
-CREATE TABLE IF NOT EXISTS votes (
-  id VARCHAR(36) PRIMARY KEY,
-  submission_id VARCHAR(36) NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
-  user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT unique_user_event_vote UNIQUE (user_id, event_id)
-);
-
 -- Essential Performance & Constraint Indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
@@ -233,9 +224,6 @@ CREATE INDEX IF NOT EXISTS idx_submissions_round ON submissions(round_id);
 CREATE INDEX IF NOT EXISTS idx_event_rounds_event ON event_rounds(event_id);
 CREATE INDEX IF NOT EXISTS idx_lft_posts_event ON lft_posts(event_id);
 CREATE INDEX IF NOT EXISTS idx_lft_posts_user ON lft_posts(user_id);
-CREATE INDEX IF NOT EXISTS idx_votes_submission ON votes(submission_id);
-CREATE INDEX IF NOT EXISTS idx_votes_event ON votes(event_id);
-CREATE INDEX IF NOT EXISTS idx_votes_user ON votes(user_id);
 `;
 
 export default SCHEMA_SQL;

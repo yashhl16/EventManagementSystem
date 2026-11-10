@@ -2126,19 +2126,13 @@ async function runTests() {
     );
     const tc37_submissionId = tc37_submitData.submission.id;
 
-    // 37g: Public project showcase gallery lists submission with 0 initial votes
+    // 37g: Confirm Public Project Showcase and Voting endpoints have been completely removed (404 Not Found)
     const tc37_showcaseRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/showcase`);
-    const tc37_showcaseData = await tc37_showcaseRes.json();
     assert(
-      tc37_showcaseRes.status === 200 &&
-        tc37_showcaseData.success &&
-        tc37_showcaseData.submissions.some(
-          (s) => s.id === tc37_submissionId && s.votesCount === 0 && s.title.includes('Autonomous Vision')
-        ),
-      'Test Case 37g: GET /api/events/:id/showcase serves public project gallery displaying submitted deliverables'
+      tc37_showcaseRes.status === 404,
+      'Test Case 37g: Public showcase gallery endpoint returns 404 Not Found after feature removal'
     );
 
-    // 37h: Student 2 casts People\'s Choice Award vote for the submission
     const tc37_voteRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/vote`, {
       method: 'POST',
       headers: {
@@ -2149,45 +2143,9 @@ async function runTests() {
         submissionId: tc37_submissionId,
       }),
     });
-    const tc37_voteData = await tc37_voteRes.json();
     assert(
-      tc37_voteRes.status === 200 &&
-        tc37_voteData.success &&
-        tc37_voteData.votesCount === 1 &&
-        tc37_voteData.hasVoted === true,
-      'Test Case 37h: Authenticated student casts vote; submission vote counter increments to 1'
-    );
-
-    // 37i: 1-Vote-Per-User-Per-Event Constraint: Voting again does NOT duplicate votes
-    const tc37_dupVoteRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/vote`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${newStudentToken}`,
-      },
-      body: JSON.stringify({
-        submissionId: tc37_submissionId,
-      }),
-    });
-    const tc37_dupVoteData = await tc37_dupVoteRes.json();
-    assert(
-      tc37_dupVoteRes.status === 200 &&
-        tc37_dupVoteData.success &&
-        tc37_dupVoteData.votesCount === 1,
-      'Test Case 37i: Strict 1-vote constraint enforced; repeated vote submission retains single count'
-    );
-
-    // 37j: Public Showcase Leaderboard returns ranked standing
-    const tc37_leaderboardRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/showcase/leaderboard`);
-    const tc37_leaderboardData = await tc37_leaderboardRes.json();
-    assert(
-      tc37_leaderboardRes.status === 200 &&
-        tc37_leaderboardData.success &&
-        tc37_leaderboardData.leaderboard.length >= 1 &&
-        tc37_leaderboardData.leaderboard[0].id === tc37_submissionId &&
-        tc37_leaderboardData.leaderboard[0].votesCount === 1 &&
-        tc37_leaderboardData.leaderboard[0].rank === 1,
-      'Test Case 37j: GET /api/events/:id/showcase/leaderboard ranks submissions by vote tally with podium standings'
+      tc37_voteRes.status === 404,
+      'Test Case 37h: Direct voting endpoint returns 404 Not Found after feature removal'
     );
 
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);

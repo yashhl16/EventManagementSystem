@@ -272,18 +272,11 @@ export const getEventSubmissions = async (req, res) => {
     const subsRes = await query(
       `SELECT s.*, t.name as team_name, t.invite_code,
               u.name as submitter_name, u.email as submitter_email,
-              er.round_number, er.title as round_title,
-              COALESCE(v.votes_count, 0) as votes_count
+              er.round_number, er.title as round_title
        FROM submissions s
        LEFT JOIN teams t ON s.team_id = t.id
        LEFT JOIN users u ON s.user_id = u.id
        LEFT JOIN event_rounds er ON s.round_id = er.id
-       LEFT JOIN (
-         SELECT submission_id, COUNT(*) as votes_count
-         FROM votes
-         WHERE event_id = $1
-         GROUP BY submission_id
-       ) v ON v.submission_id = s.id
        WHERE s.event_id = $1
        ORDER BY s.submitted_at DESC`,
       [eventId]

@@ -288,20 +288,4 @@ export const roundService = {
     api.delete(`/events/${eventId}/rounds/${roundId}`),
 };
 
-/* ================= PUBLIC PROJECT SHOWCASE & VOTING API ================= */
-export const showcaseService = {
-  getEventShowcase: (
-    eventId: string,
-    params?: { roundId?: string; search?: string; sortBy?: string }
-  ) => api.get(`/events/${eventId}/showcase`, { params }),
-
-  castVote: (eventId: string, submissionId: string) =>
-    api.post(`/events/${eventId}/vote`, { submissionId }),
-
-  retractVote: (eventId: string) => api.delete(`/events/${eventId}/vote`),
-
-  getEventLeaderboard: (eventId: string) =>
-    api.get(`/events/${eventId}/showcase/leaderboard`),
-};
-
 export default api;

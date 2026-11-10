@@ -15,12 +15,10 @@ import {
   submitDeliverable,
   getMySubmission,
 } from '../controllers/submissionController.js';
-import { castVote, retractVote } from '../controllers/showcaseController.js';
 import teamRoutes from './teamRoutes.js';
 import submissionRoutes from './submissionRoutes.js';
 import lftRoutes from './lftRoutes.js';
 import roundRoutes from './roundRoutes.js';
-import showcaseRoutes from './showcaseRoutes.js';
 import { protect, requireAnyRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -30,15 +28,10 @@ router.use('/:eventId/teams', teamRoutes);
 router.use('/:eventId/submissions', submissionRoutes);
 router.use('/:eventId/lft', lftRoutes);
 router.use('/:eventId/rounds', roundRoutes);
-router.use('/:eventId/showcase', showcaseRoutes);
 
 // Direct event deliverable submission endpoints
 router.post('/:eventId/submit', protect, submitDeliverable);
 router.get('/:eventId/my-submission', protect, getMySubmission);
-
-// Direct event voting endpoints
-router.post('/:eventId/vote', protect, castVote);
-router.delete('/:eventId/vote', protect, retractVote);
 
 // Public routes
 router.get('/', getEvents);

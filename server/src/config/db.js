@@ -321,21 +321,11 @@ export const initSchema = async () => {
         updated_at TIMESTAMPTZ DEFAULT NOW(),
         CONSTRAINT unique_lft_user_event UNIQUE (user_id, event_id)
       );`,
-      `CREATE TABLE IF NOT EXISTS votes (
-        id VARCHAR(36) PRIMARY KEY,
-        submission_id VARCHAR(36) NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
-        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        CONSTRAINT unique_user_event_vote UNIQUE (user_id, event_id)
-      );`,
+      `DROP TABLE IF EXISTS votes CASCADE;`,
       `CREATE INDEX IF NOT EXISTS idx_submissions_round ON submissions(round_id);`,
       `CREATE INDEX IF NOT EXISTS idx_event_rounds_event ON event_rounds(event_id);`,
       `CREATE INDEX IF NOT EXISTS idx_lft_posts_event ON lft_posts(event_id);`,
       `CREATE INDEX IF NOT EXISTS idx_lft_posts_user ON lft_posts(user_id);`,
-      `CREATE INDEX IF NOT EXISTS idx_votes_submission ON votes(submission_id);`,
-      `CREATE INDEX IF NOT EXISTS idx_votes_event ON votes(event_id);`,
-      `CREATE INDEX IF NOT EXISTS idx_votes_user ON votes(user_id);`,
       // Safe targeted purge of legacy seed dummy events on Neon
       `DELETE FROM events WHERE title IN ('AI Horizon 2026: 36-Hour National Hackathon', 'Mastering Cloud-Native Microservices with Kubernetes', 'CyberDefend 2026: Campus Capture The Flag (CTF)', 'RoboWars 2026: Autonomous Combat Arena & Drone Racing', 'Tarang 2026: Annual University Cultural & Musical Odyssey') AND organizer_email = 'organizer@college.edu';`,
       `DELETE FROM announcements WHERE title = 'Hacker Guide & API Keys Released';`,
@@ -850,8 +840,6 @@ export const mapSubmission = (row) => {
     updatedAt: row.updated_at,
     teamName: row.team_name,
     submitterName: row.submitter_name,
-    votesCount: Number(row.votes_count) || 0,
-    hasVoted: Boolean(row.has_voted),
     members: Array.isArray(row.members) ? row.members : (typeof row.members === 'string' ? JSON.parse(row.members) : undefined),
   };
 };
@@ -902,18 +890,6 @@ export const mapLFTPost = (row) => {
     candidateEmail: row.user_email,
     userAvatar: row.user_avatar || '',
     userDepartment: row.user_department || 'General',
-  };
-};
-
-export const mapVote = (row) => {
-  if (!row) return null;
-  return {
-    id: row.id,
-    _id: row.id,
-    submissionId: row.submission_id,
-    userId: row.user_id,
-    eventId: row.event_id,
-    createdAt: row.created_at,
   };
 };
 

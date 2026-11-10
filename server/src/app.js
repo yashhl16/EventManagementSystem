@@ -17,7 +17,6 @@ import teamRoutes from './routes/teamRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
 import lftRoutes from './routes/lftRoutes.js';
 import roundRoutes from './routes/roundRoutes.js';
-import showcaseRoutes from './routes/showcaseRoutes.js';
 import { protect, requireAnyRole } from './middleware/auth.js';
 import { updateProfile, getMe } from './controllers/authController.js';
 import { markAttendance, getPassDetails } from './controllers/attendanceController.js';
@@ -138,7 +137,6 @@ app.use(['/api/teams', '/teams'], teamRoutes);
 app.use(['/api/submissions', '/submissions'], submissionRoutes);
 app.use(['/api/lft', '/lft'], lftRoutes);
 app.use(['/api/rounds', '/rounds'], roundRoutes);
-app.use(['/api/showcase', '/showcase'], showcaseRoutes);
 
 // 404 Handler for undefined API routes
 app.use(['/api/*', '/api'], (req, res) => {

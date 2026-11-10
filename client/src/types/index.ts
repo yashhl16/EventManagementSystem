@@ -298,8 +298,6 @@ export interface Submission {
   updatedAt?: string;
   teamName?: string;
   submitterName?: string;
-  votesCount?: number;
-  hasVoted?: boolean;
   members?: Array<{ name: string; avatar?: string; role: string }>;
 }
 
@@ -319,15 +317,6 @@ export interface LFTPost {
   userAvatar?: string;
   userDepartment?: string;
   userEmail?: string;
-}
-
-export interface Vote {
-  id: string;
-  _id?: string;
-  submissionId: string;
-  userId: string;
-  eventId: string;
-  createdAt: string;
 }
 
 export interface Team {

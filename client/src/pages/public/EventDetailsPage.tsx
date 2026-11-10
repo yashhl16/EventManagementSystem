@@ -18,7 +18,6 @@ import {
   FileText,
   Award,
   Download,
-  Trophy,
   Layers,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -380,31 +379,6 @@ export const EventDetailsPage: React.FC = () => {
               <MultiRoundTracker rounds={event.rounds} />
             )}
 
-            {/* Public Project Showcase & People's Choice Voting Banner */}
-            <div className="relative overflow-hidden rounded-2xl border border-amber-200/90 bg-gradient-to-r from-amber-50 via-purple-50/60 to-indigo-50 p-5 shadow-sm dark:border-amber-900/40 dark:from-amber-950/20 dark:via-purple-950/20 dark:to-indigo-950/20">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
-                    <Trophy className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    People's Choice Award & Gallery
-                  </div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Public Project Showcase & Voting
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Explore student team submissions, inspect live demos, reports, & repos, and cast your official vote!
-                  </p>
-                </div>
-                <Link
-                  to={`/events/${event._id}/showcase`}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:from-amber-600 hover:to-indigo-700 transition shrink-0"
-                >
-                  <Trophy className="h-4 w-4" />
-                  Explore Showcase & Vote
-                </Link>
-              </div>
-            </div>
-
             {/* Looking For Team (LFT) Matching Hub */}
             {event.isTeamEvent && (
               <LFTHub
@@ -638,14 +612,6 @@ export const EventDetailsPage: React.FC = () => {
                         {(submission || myTeam?.submission) ? 'View / Update Deliverables →' : 'Submit Project Deliverable →'}
                       </button>
                     </div>
-
-                    <Link
-                      to={`/events/${event._id}/showcase`}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50/80 py-2.5 text-xs font-bold text-amber-900 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300 transition"
-                    >
-                      <Trophy className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                      View Project Showcase & Vote →
-                    </Link>
                   </div>
                 ) : calculateEventStatus(event) === 'Completed' ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300 font-medium space-y-1">
@@ -725,15 +691,6 @@ export const EventDetailsPage: React.FC = () => {
                   </div>
                 )}
               </div>
-
-              {/* Public Showcase & Leaderboard Shortcut */}
-              <Link
-                to={`/events/${event._id}/showcase`}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 transition"
-              >
-                <Trophy className="h-4 w-4 text-amber-500" />
-                <span>People's Choice Showcase Gallery</span>
-              </Link>
 
               {/* Guarantees */}
               <div className="border-t border-slate-100 pt-4 dark:border-slate-800 text-[11px] text-slate-400 space-y-2">
