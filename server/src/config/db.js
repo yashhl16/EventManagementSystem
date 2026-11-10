@@ -210,6 +210,9 @@ export const initSchema = async () => {
 
     // Safe progressive non-destructive migrations for existing Neon database instances
     const migrations = [
+      `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "round_id" TEXT;`,
+      `ALTER TABLE submissions ADD COLUMN IF NOT EXISTS round_id TEXT;`,
+      `ALTER TABLE submissions ALTER COLUMN round_id DROP NOT NULL;`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS student_id VARCHAR(50) DEFAULT '';`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id VARCHAR(50) DEFAULT '';`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_id VARCHAR(50) DEFAULT '';`,
@@ -406,6 +409,13 @@ export const connectDB = async () => {
 
       const client = await newPool.connect();
       const res = await client.query('SELECT NOW() as server_time, current_database() as db_name');
+      try {
+        await client.query('ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "round_id" TEXT;');
+        await client.query('ALTER TABLE submissions ADD COLUMN IF NOT EXISTS round_id TEXT;');
+        await client.query('ALTER TABLE submissions ALTER COLUMN round_id DROP NOT NULL;');
+      } catch (colErr) {
+        // Safe to ignore if table doesn't exist yet before initSchema
+      }
       client.release();
 
       setActivePool(newPool);

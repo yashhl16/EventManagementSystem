@@ -2386,6 +2386,75 @@ async function runTests() {
       'Test Case 39c: Submission successfully preserves and maps roundId relation with event_rounds'
     );
 
+    // TEST CASE 40: Conditional round_id Insertion Safeguard & Neon Schema Resilience
+    // 40a: Submit PowerPoint (.pptx) presentation with roundId completely omitted
+    const tc40_pptxNoRoundRes = await fetch(`${BASE_URL}/events/${hackathonId}/deliverables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Neural Vision Executive Pitch Deck',
+        description: 'Complete slide deck without roundId parameter to verify conditional column exclusion.',
+        fileName: 'executive_pitch_deck.pptx',
+        fileType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        fileUrl: 'data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,UEsDBBQAAAAIAAA=',
+      }),
+    });
+    const tc40_pptxNoRoundData = await tc40_pptxNoRoundRes.json();
+    assert(
+      (tc40_pptxNoRoundRes.status === 200 || tc40_pptxNoRoundRes.status === 201) &&
+        tc40_pptxNoRoundData.success &&
+        tc40_pptxNoRoundData.submission?.title === 'Neural Vision Executive Pitch Deck',
+      'Test Case 40a: PowerPoint deliverable successfully submitted with roundId omitted, bypassing round_id column errors'
+    );
+
+    // 40b: Submit deliverable via direct POST /api/submissions without roundId
+    const tc40_directNoRoundRes = await fetch(`${BASE_URL}/submissions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        eventId: hackathonId,
+        title: 'Neural Vision Direct Route Deliverable',
+        fileName: 'direct_route_deck.pdf',
+        fileType: 'application/pdf',
+        fileUrl: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+      }),
+    });
+    const tc40_directNoRoundData = await tc40_directNoRoundRes.json();
+    assert(
+      (tc40_directNoRoundRes.status === 200 || tc40_directNoRoundRes.status === 201) &&
+        tc40_directNoRoundData.success,
+      'Test Case 40b: Direct POST /api/submissions succeeds without roundId using conditional column handling'
+    );
+
+    // 40c: Update deliverable omitting roundId (verifying update query does not touch round_id)
+    const tc40_updateNoRoundRes = await fetch(`${BASE_URL}/events/${hackathonId}/deliverables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Neural Vision Updated Executive Pitch Deck',
+        description: 'Updated presentation deck with revised financial analysis.',
+        fileName: 'executive_pitch_deck_v2.pptx',
+        fileType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        fileUrl: 'data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,UEsDBBQAAAAIAAA=',
+      }),
+    });
+    const tc40_updateNoRoundData = await tc40_updateNoRoundRes.json();
+    assert(
+      (tc40_updateNoRoundRes.status === 200 || tc40_updateNoRoundRes.status === 201) &&
+        tc40_updateNoRoundData.success &&
+        tc40_updateNoRoundData.submission?.title === 'Neural Vision Updated Executive Pitch Deck',
+      'Test Case 40c: Deliverable update succeeds without roundId via safe query fallback'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

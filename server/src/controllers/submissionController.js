@@ -3,11 +3,31 @@ import { query, mapSubmission } from '../config/db.js';
 import { validateText } from '../utils/validation.js';
 import { validateSubmissionFile, storeDeliverableFile } from '../utils/fileStorage.js';
 
+let hasCheckedRoundIdCol = false;
+
+/**
+ * Safely ensure the round_id column exists on Neon PostgreSQL submissions table
+ */
+async function ensureRoundIdColumn() {
+  if (hasCheckedRoundIdCol) return;
+  try {
+    await query('ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "round_id" TEXT;');
+    await query('ALTER TABLE submissions ADD COLUMN IF NOT EXISTS round_id TEXT;');
+    await query('ALTER TABLE submissions ALTER COLUMN round_id DROP NOT NULL;');
+    hasCheckedRoundIdCol = true;
+  } catch (err) {
+    console.warn('[DB] Auto-migration notice for round_id:', err.message);
+  }
+}
+
 /**
  * Submit or Update Project Deliverables (PDF, PPT, DOC, GitHub, Figma, Round)
  */
 export const submitDeliverable = async (req, res) => {
   try {
+    // Proactively ensure round_id column exists
+    await ensureRoundIdColumn();
+
     const eventId = req.params.eventId || req.params.id || req.body?.eventId || req.body?.event_id;
     if (!eventId) {
       return res.status(400).json({
@@ -39,10 +59,13 @@ export const submitDeliverable = async (req, res) => {
       round_id = null,
     } = req.body || {};
 
-    const cleanRoundId = (typeof roundId === 'string' && roundId.trim() !== '')
-      ? roundId.trim()
-      : (typeof round_id === 'string' && round_id.trim() !== '' ? round_id.trim() : null);
+    // Only set finalRoundId if it is a non-empty string
+    const cleanRoundId =
+      (typeof roundId === 'string' && roundId.trim() !== '')
+        ? roundId.trim()
+        : (typeof round_id === 'string' && round_id.trim() !== '' ? round_id.trim() : null);
     const finalRoundId = cleanRoundId || null;
+
     const finalFileUrl = fileUrl || file_url || documentUrl || document_url || fileData || '';
     const finalFileName = fileName || file_name || 'deliverable.pdf';
     const finalFileType = (fileType || file_type || 'application/pdf').slice(0, 255);
@@ -139,20 +162,43 @@ export const submitDeliverable = async (req, res) => {
     const storedFileSize = stored.fileSize || finalFileSize || 0;
 
     // 6. Check if a submission already exists for this round/event to allow seamless replacement/updating
-    let existingSubRes;
+    let existingSubRes = { rows: [] };
+
+    // Only query with round_id if roundId is provided and non-empty
     if (finalRoundId) {
-      if (teamId) {
-        existingSubRes = await query(
-          `SELECT id FROM submissions WHERE team_id = $1 AND event_id = $2 AND round_id = $3 LIMIT 1`,
-          [teamId, eventId, finalRoundId]
-        );
-      } else {
-        existingSubRes = await query(
-          `SELECT id FROM submissions WHERE user_id = $1 AND event_id = $2 AND round_id = $3 LIMIT 1`,
-          [userId, eventId, finalRoundId]
-        );
+      try {
+        if (teamId) {
+          existingSubRes = await query(
+            `SELECT id FROM submissions WHERE team_id = $1 AND event_id = $2 AND round_id = $3 LIMIT 1`,
+            [teamId, eventId, finalRoundId]
+          );
+        } else {
+          existingSubRes = await query(
+            `SELECT id FROM submissions WHERE user_id = $1 AND event_id = $2 AND round_id = $3 LIMIT 1`,
+            [userId, eventId, finalRoundId]
+          );
+        }
+      } catch (checkErr) {
+        if (checkErr.message && checkErr.message.includes('round_id')) {
+          // Schema fallback: query without round_id
+          await ensureRoundIdColumn();
+          if (teamId) {
+            existingSubRes = await query(
+              `SELECT id FROM submissions WHERE team_id = $1 AND event_id = $2 LIMIT 1`,
+              [teamId, eventId]
+            );
+          } else {
+            existingSubRes = await query(
+              `SELECT id FROM submissions WHERE user_id = $1 AND event_id = $2 LIMIT 1`,
+              [userId, eventId]
+            );
+          }
+        } else {
+          throw checkErr;
+        }
       }
     } else {
+      // Safe query without round_id condition
       if (teamId) {
         existingSubRes = await query(
           `SELECT id FROM submissions WHERE team_id = $1 AND event_id = $2 LIMIT 1`,
@@ -171,55 +217,173 @@ export const submitDeliverable = async (req, res) => {
 
     if (isUpdate) {
       const subId = existingSubRes.rows[0].id;
-      const updateRes = await query(
-        `UPDATE submissions
-         SET title = $1, description = $2, file_url = $3, document_url = $4, file_type = $5,
-             file_name = $6, file_size = $7, github_url = $8, figma_url = $9,
-             user_id = $10, round_id = COALESCE($11, round_id), updated_at = NOW()
-         WHERE id = $12
-         RETURNING *`,
-        [
-          titleCheck.value,
-          finalDescription,
-          storedFileUrl,
-          storedDocumentUrl,
-          storedFileType,
-          storedFileName,
-          storedFileSize,
-          finalGithubUrl,
-          finalFigmaUrl,
-          userId,
-          finalRoundId,
-          subId,
-        ]
-      );
-      savedSubmission = updateRes.rows[0];
+
+      // Only update round_id if roundId is provided and not empty
+      if (finalRoundId) {
+        try {
+          const updateRes = await query(
+            `UPDATE submissions
+             SET title = $1, description = $2, file_url = $3, document_url = $4, file_type = $5,
+                 file_name = $6, file_size = $7, github_url = $8, figma_url = $9,
+                 user_id = $10, round_id = $11, updated_at = NOW()
+             WHERE id = $12
+             RETURNING *`,
+            [
+              titleCheck.value,
+              finalDescription,
+              storedFileUrl,
+              storedDocumentUrl,
+              storedFileType,
+              storedFileName,
+              storedFileSize,
+              finalGithubUrl,
+              finalFigmaUrl,
+              userId,
+              finalRoundId,
+              subId,
+            ]
+          );
+          savedSubmission = updateRes.rows[0];
+        } catch (updErr) {
+          if (updErr.message && updErr.message.includes('round_id')) {
+            await ensureRoundIdColumn();
+            const updateRes = await query(
+              `UPDATE submissions
+               SET title = $1, description = $2, file_url = $3, document_url = $4, file_type = $5,
+                   file_name = $6, file_size = $7, github_url = $8, figma_url = $9,
+                   user_id = $10, updated_at = NOW()
+               WHERE id = $11
+               RETURNING *`,
+              [
+                titleCheck.value,
+                finalDescription,
+                storedFileUrl,
+                storedDocumentUrl,
+                storedFileType,
+                storedFileName,
+                storedFileSize,
+                finalGithubUrl,
+                finalFigmaUrl,
+                userId,
+                subId,
+              ]
+            );
+            savedSubmission = updateRes.rows[0];
+          } else {
+            throw updErr;
+          }
+        }
+      } else {
+        // Safe update omitting round_id column completely
+        const updateRes = await query(
+          `UPDATE submissions
+           SET title = $1, description = $2, file_url = $3, document_url = $4, file_type = $5,
+               file_name = $6, file_size = $7, github_url = $8, figma_url = $9,
+               user_id = $10, updated_at = NOW()
+           WHERE id = $11
+           RETURNING *`,
+          [
+            titleCheck.value,
+            finalDescription,
+            storedFileUrl,
+            storedDocumentUrl,
+            storedFileType,
+            storedFileName,
+            storedFileSize,
+            finalGithubUrl,
+            finalFigmaUrl,
+            userId,
+            subId,
+          ]
+        );
+        savedSubmission = updateRes.rows[0];
+      }
     } else {
       const subId = crypto.randomUUID();
-      const insertRes = await query(
-        `INSERT INTO submissions (
-          id, team_id, event_id, user_id, round_id, title, description,
-          file_url, document_url, file_type, file_name, file_size, github_url, figma_url
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        RETURNING *`,
-        [
-          subId,
-          teamId,
-          eventId,
-          userId,
-          finalRoundId,
-          titleCheck.value,
-          finalDescription,
-          storedFileUrl,
-          storedDocumentUrl,
-          storedFileType,
-          storedFileName,
-          storedFileSize,
-          finalGithubUrl,
-          finalFigmaUrl,
-        ]
-      );
-      savedSubmission = insertRes.rows[0];
+
+      // Only insert round_id if roundId is provided and not empty
+      if (finalRoundId) {
+        try {
+          const insertRes = await query(
+            `INSERT INTO submissions (
+              id, team_id, event_id, user_id, round_id, title, description,
+              file_url, document_url, file_type, file_name, file_size, github_url, figma_url
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING *`,
+            [
+              subId,
+              teamId,
+              eventId,
+              userId,
+              finalRoundId,
+              titleCheck.value,
+              finalDescription,
+              storedFileUrl,
+              storedDocumentUrl,
+              storedFileType,
+              storedFileName,
+              storedFileSize,
+              finalGithubUrl,
+              finalFigmaUrl,
+            ]
+          );
+          savedSubmission = insertRes.rows[0];
+        } catch (insErr) {
+          if (insErr.message && insErr.message.includes('round_id')) {
+            await ensureRoundIdColumn();
+            const insertRes = await query(
+              `INSERT INTO submissions (
+                id, team_id, event_id, user_id, title, description,
+                file_url, document_url, file_type, file_name, file_size, github_url, figma_url
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+              RETURNING *`,
+              [
+                subId,
+                teamId,
+                eventId,
+                userId,
+                titleCheck.value,
+                finalDescription,
+                storedFileUrl,
+                storedDocumentUrl,
+                storedFileType,
+                storedFileName,
+                storedFileSize,
+                finalGithubUrl,
+                finalFigmaUrl,
+              ]
+            );
+            savedSubmission = insertRes.rows[0];
+          } else {
+            throw insErr;
+          }
+        }
+      } else {
+        // Safe insert omitting round_id column completely from SQL statement
+        const insertRes = await query(
+          `INSERT INTO submissions (
+            id, team_id, event_id, user_id, title, description,
+            file_url, document_url, file_type, file_name, file_size, github_url, figma_url
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          RETURNING *`,
+          [
+            subId,
+            teamId,
+            eventId,
+            userId,
+            titleCheck.value,
+            finalDescription,
+            storedFileUrl,
+            storedDocumentUrl,
+            storedFileType,
+            storedFileName,
+            storedFileSize,
+            finalGithubUrl,
+            finalFigmaUrl,
+          ]
+        );
+        savedSubmission = insertRes.rows[0];
+      }
     }
 
     res.status(isUpdate ? 200 : 201).json({
@@ -259,6 +423,8 @@ export const getMySubmission = async (req, res) => {
     }
 
     const { roundId } = req.query;
+    const cleanRoundId =
+      (typeof roundId === 'string' && roundId.trim() !== '') ? roundId.trim() : null;
     const userId = req.user.id || req.user._id;
 
     // Check if team event
@@ -271,41 +437,72 @@ export const getMySubmission = async (req, res) => {
     );
 
     let subRes;
-    const roundFilter = roundId ? ' AND s.round_id = $3' : '';
+    const roundFilter = cleanRoundId ? ' AND s.round_id = $3' : '';
     const params = [eventId];
 
-    if (teamRes.rows.length > 0) {
-      const teamId = teamRes.rows[0].id;
-      params.unshift(teamId);
-      if (roundId) params.push(roundId);
+    try {
+      if (teamRes.rows.length > 0) {
+        const teamId = teamRes.rows[0].id;
+        params.unshift(teamId);
+        if (cleanRoundId) params.push(cleanRoundId);
 
-      subRes = await query(
-        `SELECT s.*, t.name as team_name, u.name as submitter_name,
-                er.round_number, er.title as round_title
-         FROM submissions s
-         LEFT JOIN teams t ON s.team_id = t.id
-         LEFT JOIN users u ON s.user_id = u.id
-         LEFT JOIN event_rounds er ON s.round_id = er.id
-         WHERE s.team_id = $1 AND s.event_id = $2${roundFilter}
-         ORDER BY s.updated_at DESC
-         LIMIT 1`,
-        params
-      );
-    } else {
-      params.unshift(userId);
-      if (roundId) params.push(roundId);
+        subRes = await query(
+          `SELECT s.*, t.name as team_name, u.name as submitter_name,
+                  er.round_number, er.title as round_title
+           FROM submissions s
+           LEFT JOIN teams t ON s.team_id = t.id
+           LEFT JOIN users u ON s.user_id = u.id
+           LEFT JOIN event_rounds er ON s.round_id = er.id
+           WHERE s.team_id = $1 AND s.event_id = $2${roundFilter}
+           ORDER BY s.updated_at DESC
+           LIMIT 1`,
+          params
+        );
+      } else {
+        params.unshift(userId);
+        if (cleanRoundId) params.push(cleanRoundId);
 
-      subRes = await query(
-        `SELECT s.*, u.name as submitter_name,
-                er.round_number, er.title as round_title
-         FROM submissions s
-         LEFT JOIN users u ON s.user_id = u.id
-         LEFT JOIN event_rounds er ON s.round_id = er.id
-         WHERE s.user_id = $1 AND s.event_id = $2${roundFilter}
-         ORDER BY s.updated_at DESC
-         LIMIT 1`,
-        params
-      );
+        subRes = await query(
+          `SELECT s.*, u.name as submitter_name,
+                  er.round_number, er.title as round_title
+           FROM submissions s
+           LEFT JOIN users u ON s.user_id = u.id
+           LEFT JOIN event_rounds er ON s.round_id = er.id
+           WHERE s.user_id = $1 AND s.event_id = $2${roundFilter}
+           ORDER BY s.updated_at DESC
+           LIMIT 1`,
+          params
+        );
+      }
+    } catch (queryErr) {
+      if (queryErr.message && queryErr.message.includes('round_id')) {
+        // Fallback query without event_rounds join or round_id column
+        if (teamRes.rows.length > 0) {
+          const teamId = teamRes.rows[0].id;
+          subRes = await query(
+            `SELECT s.*, t.name as team_name, u.name as submitter_name
+             FROM submissions s
+             LEFT JOIN teams t ON s.team_id = t.id
+             LEFT JOIN users u ON s.user_id = u.id
+             WHERE s.team_id = $1 AND s.event_id = $2
+             ORDER BY s.updated_at DESC
+             LIMIT 1`,
+            [teamId, eventId]
+          );
+        } else {
+          subRes = await query(
+            `SELECT s.*, u.name as submitter_name
+             FROM submissions s
+             LEFT JOIN users u ON s.user_id = u.id
+             WHERE s.user_id = $1 AND s.event_id = $2
+             ORDER BY s.updated_at DESC
+             LIMIT 1`,
+            [userId, eventId]
+          );
+        }
+      } else {
+        throw queryErr;
+      }
     }
 
     if (subRes.rows.length === 0) {
@@ -347,18 +544,36 @@ export const getEventSubmissions = async (req, res) => {
       });
     }
 
-    const subsRes = await query(
-      `SELECT s.*, t.name as team_name, t.invite_code,
-              u.name as submitter_name, u.email as submitter_email,
-              er.round_number, er.title as round_title
-       FROM submissions s
-       LEFT JOIN teams t ON s.team_id = t.id
-       LEFT JOIN users u ON s.user_id = u.id
-       LEFT JOIN event_rounds er ON s.round_id = er.id
-       WHERE s.event_id = $1
-       ORDER BY s.submitted_at DESC`,
-      [eventId]
-    );
+    let subsRes;
+    try {
+      subsRes = await query(
+        `SELECT s.*, t.name as team_name, t.invite_code,
+                u.name as submitter_name, u.email as submitter_email,
+                er.round_number, er.title as round_title
+         FROM submissions s
+         LEFT JOIN teams t ON s.team_id = t.id
+         LEFT JOIN users u ON s.user_id = u.id
+         LEFT JOIN event_rounds er ON s.round_id = er.id
+         WHERE s.event_id = $1
+         ORDER BY s.submitted_at DESC`,
+        [eventId]
+      );
+    } catch (queryErr) {
+      if (queryErr.message && queryErr.message.includes('round_id')) {
+        subsRes = await query(
+          `SELECT s.*, t.name as team_name, t.invite_code,
+                  u.name as submitter_name, u.email as submitter_email
+           FROM submissions s
+           LEFT JOIN teams t ON s.team_id = t.id
+           LEFT JOIN users u ON s.user_id = u.id
+           WHERE s.event_id = $1
+           ORDER BY s.submitted_at DESC`,
+          [eventId]
+        );
+      } else {
+        throw queryErr;
+      }
+    }
 
     const submissions = subsRes.rows.map(mapSubmission);
 

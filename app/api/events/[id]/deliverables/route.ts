@@ -13,11 +13,29 @@ export const maxDuration = 60;
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
+    const eventId = params.id;
+    const { userId, title, description, fileUrl, githubUrl, figmaUrl, roundId } = body;
+
+    // Safe insert payload omitting roundId if not provided or empty
+    const submissionData: any = {
+      eventId,
+      userId: userId || 'anonymous',
+      title,
+      description: description || null,
+      fileUrl: fileUrl || null,
+      githubUrl: githubUrl || null,
+      figmaUrl: figmaUrl || null,
+    };
+
+    // Only include roundId if it is provided and not empty
+    if (roundId && typeof roundId === 'string' && roundId.trim() !== '') {
+      submissionData.roundId = roundId.trim();
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Deliverables submitted successfully',
-      eventId: params.id,
-      body,
+      submission: submissionData,
     });
   } catch (error: any) {
     console.error('Submission error:', error);
