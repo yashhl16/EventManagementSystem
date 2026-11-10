@@ -96,6 +96,7 @@ export interface CollegeEvent {
   ticketPrice: number;
   eligibility: string;
   prerequisites?: string;
+  allowTeams?: boolean;
   isTeamEvent: boolean;
   teamMinSize?: number;
   teamMaxSize?: number;
@@ -122,6 +123,7 @@ export interface Registration {
   user: User;
   ticketCode: string;
   registrationType?: 'individual' | 'team';
+  teamId?: string;
   teamName?: string;
   team?: {
     _id: string;

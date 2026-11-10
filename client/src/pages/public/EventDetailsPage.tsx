@@ -226,6 +226,7 @@ export const EventDetailsPage: React.FC = () => {
     Math.round(((event.registeredCount || 0) / event.maxCapacity) * 100)
   );
   const isFull = availableSeats === 0;
+  const isTeamEnabled = Boolean(event.allowTeams !== undefined ? event.allowTeams : event.isTeamEvent);
   const organizer: any = event.organizer;
 
   return (
@@ -282,7 +283,7 @@ export const EventDetailsPage: React.FC = () => {
             >
               {event.isPaid ? `Fee: $${event.ticketPrice}` : 'FREE ADMISSION'}
             </span>
-            {event.isTeamEvent && (
+            {isTeamEnabled && (
               <span className="rounded-full bg-purple-600 px-3 py-1 text-xs font-bold text-white">
                 Team Event ({event.teamMinSize}-{event.teamMaxSize} members)
               </span>
@@ -400,7 +401,7 @@ export const EventDetailsPage: React.FC = () => {
             )}
 
             {/* Looking For Team (LFT) Matching Hub */}
-            {event.isTeamEvent && (
+            {isTeamEnabled && (
               <LFTHub
                 eventId={event._id}
                 currentUser={user}
@@ -410,7 +411,7 @@ export const EventDetailsPage: React.FC = () => {
             )}
 
             {/* Team Dashboard Card (if registered in a team) */}
-            {event.isTeamEvent && myTeam && (
+            {isTeamEnabled && myTeam && (
               <TeamDashboardCard
                 eventId={event._id}
                 maxTeamSize={event.maxTeamSize || event.teamMaxSize || 4}
@@ -431,7 +432,7 @@ export const EventDetailsPage: React.FC = () => {
               onRegisterClick={() => {
                 if (!isAuthenticated) {
                   navigate('/student/login', { state: { from: window.location.pathname } });
-                } else if (event.isTeamEvent && !myTeam) {
+                } else if (isTeamEnabled && !myTeam) {
                   setShowTeamModal(true);
                 } else {
                   handleRegisterIndividual(false);
@@ -440,7 +441,7 @@ export const EventDetailsPage: React.FC = () => {
             />
 
             {/* Organizer / Admin: Registered Teams Overview */}
-            {(role === 'organizer' || role === 'admin') && event.isTeamEvent && allEventTeams.length > 0 && (
+            {(role === 'organizer' || role === 'admin') && isTeamEnabled && allEventTeams.length > 0 && (
               <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -649,7 +650,7 @@ export const EventDetailsPage: React.FC = () => {
                 ) : role === 'student' ? (
                   /* 3. Student Registration Options */
                   <div className="space-y-2">
-                    {event.isTeamEvent ? (
+                    {isTeamEnabled ? (
                       myTeam ? (
                         <div className="space-y-3">
                           <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 text-center dark:border-purple-900/60 dark:bg-purple-950/40 space-y-1.5">
@@ -679,18 +680,18 @@ export const EventDetailsPage: React.FC = () => {
                         <Button
                           variant="primary"
                           size="lg"
-                          className="w-full"
+                          className="w-full cursor-pointer"
                           onClick={() => setShowTeamModal(true)}
                           leftIcon={<Users className="h-4 w-4" />}
                         >
-                          Create or Join Team
+                          Register for Event
                         </Button>
                       )
                     ) : (
                       <Button
                         variant="primary"
                         size="lg"
-                        className="w-full"
+                        className="w-full cursor-pointer"
                         isLoading={isRegistering}
                         onClick={() => handleRegisterIndividual(false)}
                       >
@@ -712,7 +713,7 @@ export const EventDetailsPage: React.FC = () => {
                 )}
               </div>
 
-                {event.isTeamEvent && (
+                {isTeamEnabled && (
                   <button
                     type="button"
                     onClick={() => {
@@ -763,6 +764,10 @@ export const EventDetailsPage: React.FC = () => {
         isLoading={isRegistering}
         onCreateTeam={handleCreateTeam}
         onJoinTeam={handleJoinTeam}
+        onRegisterSolo={() => {
+          setShowTeamModal(false);
+          handleRegisterIndividual(false);
+        }}
         onClose={() => setShowTeamModal(false)}
       />
 

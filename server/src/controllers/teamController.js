@@ -29,7 +29,8 @@ export const createTeam = async (req, res) => {
     }
 
     const event = eventRes.rows[0];
-    if (!event.is_team_event) {
+    const allowsTeams = Boolean(event.allow_teams !== undefined ? event.allow_teams : event.is_team_event);
+    if (!allowsTeams) {
       await client.query('ROLLBACK');
       return res.status(400).json({ success: false, message: 'This event is an individual event and does not support teams.' });
     }

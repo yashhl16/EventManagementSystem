@@ -15,6 +15,7 @@ import {
   submitDeliverable,
   getMySubmission,
 } from '../controllers/submissionController.js';
+import { registerForEvent } from '../controllers/registrationController.js';
 import teamRoutes from './teamRoutes.js';
 import submissionRoutes from './submissionRoutes.js';
 import lftRoutes from './lftRoutes.js';
@@ -36,6 +37,10 @@ router.post('/:eventId/deliverables', protect, submitDeliverable);
 router.get('/:eventId/my-submission', protect, getMySubmission);
 router.get('/:eventId/deliverables', protect, getMySubmission);
 router.get('/:eventId/deliverables/my', protect, getMySubmission);
+
+// Direct event registration endpoints
+router.post('/:eventId/register', protect, registerForEvent);
+router.post('/:id/register', protect, registerForEvent);
 
 // Public routes
 router.get('/', getEvents);

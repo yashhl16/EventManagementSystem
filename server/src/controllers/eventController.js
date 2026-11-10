@@ -288,6 +288,7 @@ export const createEvent = async (req, res) => {
       tags,
       eligibility,
       prerequisites,
+      allowTeams,
       isTeamEvent,
       teamSizeMin,
       teamSizeMax,
@@ -353,17 +354,18 @@ export const createEvent = async (req, res) => {
 
     const id = crypto.randomUUID();
     const finalBanner = bannerImage || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=1200';
+    const teamAllowed = allowTeams !== undefined ? Boolean(allowTeams) : Boolean(isTeamEvent);
 
     const insertRes = await query(
       `INSERT INTO events (
         id, title, description, category, banner_image, event_date, start_time, end_time,
         venue, venue_type, meeting_url, creator_id, organizer_name, organizer_email,
         department, max_capacity, registered_count, registration_deadline, is_paid,
-        ticket_price, status, tags, eligibility, prerequisites, is_team_event,
+        ticket_price, status, tags, eligibility, prerequisites, is_team_event, allow_teams,
         team_size_min, team_size_max, certificate_template_url, certificate_template_config
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-        $15, $16, 0, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
+        $15, $16, 0, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
       ) RETURNING *`,
       [
         id,
@@ -389,7 +391,8 @@ export const createEvent = async (req, res) => {
         JSON.stringify(Array.isArray(tags) ? tags : []),
         eligibility || 'Open to all enrolled university students',
         prerequisites || 'None',
-        !!isTeamEvent,
+        teamAllowed,
+        teamAllowed,
         Number(teamSizeMin) || 1,
         Number(teamSizeMax) || 4,
         certificateTemplateUrl ? certificateTemplateUrl.trim() : '',
@@ -479,6 +482,10 @@ export const updateEvent = async (req, res) => {
       tags,
       eligibility,
       prerequisites,
+      allowTeams,
+      isTeamEvent,
+      teamMinSize,
+      teamMaxSize,
       certificateTemplateUrl,
       certificateTemplateConfig,
     } = req.body;
@@ -534,6 +541,8 @@ export const updateEvent = async (req, res) => {
       }
     }
 
+    const updatedTeamAllowed = allowTeams !== undefined ? Boolean(allowTeams) : (isTeamEvent !== undefined ? Boolean(isTeamEvent) : null);
+
     const updateRes = await query(
       `UPDATE events
        SET title = COALESCE($1, title),
@@ -555,8 +564,12 @@ export const updateEvent = async (req, res) => {
            prerequisites = COALESCE($17, prerequisites),
            certificate_template_url = COALESCE($18, certificate_template_url),
            certificate_template_config = COALESCE($19, certificate_template_config),
+           allow_teams = COALESCE($20, allow_teams),
+           is_team_event = COALESCE($20, is_team_event),
+           team_size_min = COALESCE($21, team_size_min),
+           team_size_max = COALESCE($22, team_size_max),
            updated_at = NOW()
-       WHERE id = $20
+       WHERE id = $23
        RETURNING *`,
       [
         title ? title.trim() : null,
@@ -578,6 +591,9 @@ export const updateEvent = async (req, res) => {
         prerequisites || null,
         certificateTemplateUrl !== undefined ? (certificateTemplateUrl ? certificateTemplateUrl.trim() : '') : null,
         certificateTemplateConfig !== undefined ? JSON.stringify(certificateTemplateConfig) : null,
+        updatedTeamAllowed,
+        teamMinSize !== undefined ? Number(teamMinSize) : null,
+        teamMaxSize !== undefined ? Number(teamMaxSize) : null,
         id,
       ]
     );

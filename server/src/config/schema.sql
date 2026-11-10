@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS events (
   eligibility TEXT DEFAULT 'Open to all enrolled university students',
   prerequisites TEXT DEFAULT 'None',
   rejection_reason TEXT DEFAULT '',
+  allow_teams BOOLEAN DEFAULT false,
   is_team_event BOOLEAN DEFAULT false,
   team_size_min INT DEFAULT 1,
   team_size_max INT DEFAULT 4,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, UserPlus, KeyRound, X, CheckCircle } from 'lucide-react';
+import { Users, User, KeyRound, X, CheckCircle, ShieldCheck } from 'lucide-react';
 import { Button } from '../common/Button';
 
 interface TeamRegisterModalProps {
@@ -10,6 +10,7 @@ interface TeamRegisterModalProps {
   isLoading?: boolean;
   onCreateTeam: (teamName: string, invites?: string[]) => void;
   onJoinTeam: (joinCode: string) => void;
+  onRegisterSolo?: () => void;
   onClose: () => void;
 }
 
@@ -21,9 +22,10 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
   isLoading = false,
   onCreateTeam,
   onJoinTeam,
+  onRegisterSolo,
   onClose,
 }) => {
-  const [tab, setTab] = useState<'create' | 'join'>('create');
+  const [tab, setTab] = useState<'create' | 'join' | 'solo'>('create');
   const [teamName, setTeamName] = useState('');
   const [invitesText, setInvitesText] = useState('');
   const [joinCode, setJoinCode] = useState('');
@@ -39,9 +41,13 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
         .map((s) => s.trim())
         .filter(Boolean);
       onCreateTeam(teamName.trim(), invites);
-    } else {
+    } else if (tab === 'join') {
       if (!joinCode.trim()) return;
       onJoinTeam(joinCode.trim());
+    } else {
+      if (onRegisterSolo) {
+        onRegisterSolo();
+      }
     }
   };
 
@@ -52,7 +58,7 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
       <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+          className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
         >
           <X className="h-5 w-5" />
         </button>
@@ -62,25 +68,25 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
             <Users className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Team Registration</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Registration Options</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {eventTitle} (Team size: {minSize}-{maxSize} members)
             </p>
           </div>
         </div>
 
-        {/* Tab switcher */}
-        <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+        {/* 3-Option Tab Switcher */}
+        <div className="mt-5 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800 text-center">
           <button
             type="button"
             onClick={() => setTab('create')}
             className={`rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
               tab === 'create'
                 ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
-                : 'text-slate-600 dark:text-slate-400'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            Create New Team
+            Create Team
           </button>
           <button
             type="button"
@@ -88,15 +94,26 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
             className={`rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
               tab === 'join'
                 ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
-                : 'text-slate-600 dark:text-slate-400'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            Join with Code
+            Join Team
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('solo')}
+            className={`rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              tab === 'solo'
+                ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            Register Solo
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          {tab === 'create' ? (
+          {tab === 'create' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -134,10 +151,12 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
                 </p>
               </div>
             </div>
-          ) : (
+          )}
+
+          {tab === 'join' && (
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Team Invite Code
+                Team Invite Code *
               </label>
               <input
                 type="text"
@@ -145,12 +164,30 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
                 maxLength={50}
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="e.g. TEAM-8942"
+                placeholder="e.g. SIH-A1B2C3 or TEAM-8942"
                 className="mt-1.5 w-full uppercase font-mono tracking-wider rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
               />
               <p className="mt-1.5 text-[11px] text-slate-400">
-                Ask your team leader for the 8-character team join code.
+                Enter the team invite code provided by your team leader, or find open teams via the LFT Hub.
               </p>
+            </div>
+          )}
+
+          {tab === 'solo' && (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 dark:border-indigo-900/40 dark:bg-indigo-950/30 space-y-2">
+                <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
+                  <User className="h-4 w-4" />
+                  <span>Solo Individual Participation</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  You can register and participate individually without joining a team. Your digital QR entry pass will be generated immediately.
+                </p>
+                <div className="flex items-center gap-2 pt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>You can still find or form a team later in the LFT Hub</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -159,7 +196,11 @@ export const TeamRegisterModal: React.FC<TeamRegisterModalProps> = ({
               Cancel
             </Button>
             <Button variant="primary" type="submit" isLoading={isLoading}>
-              {tab === 'create' ? 'Create Team & Register' : 'Join Team & Register'}
+              {tab === 'create'
+                ? 'Create Team & Register'
+                : tab === 'join'
+                ? 'Join Team & Register'
+                : 'Confirm Solo Registration'}
             </Button>
           </div>
         </form>

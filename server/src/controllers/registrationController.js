@@ -57,7 +57,31 @@ export const registerForEvent = async (req, res) => {
       });
     }
 
-    // 2. Duplicate registration check
+    // 2. Conditional Team Registration Validation
+    const { teamId, teamName, registrationType } = req.body || {};
+    const allowsTeams = Boolean(event.allow_teams !== undefined ? event.allow_teams : event.is_team_event);
+
+    if (teamId && !allowsTeams) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'This event is strictly for individual participation. Team registrations are not permitted.',
+      });
+    }
+
+    let finalTeamName = teamName ? String(teamName).trim() : null;
+    let finalTeamId = teamId || null;
+
+    if (finalTeamId && !finalTeamName) {
+      try {
+        const teamRes = await client.query('SELECT name FROM teams WHERE id = $1', [finalTeamId]);
+        if (teamRes.rows.length > 0) {
+          finalTeamName = teamRes.rows[0].name;
+        }
+      } catch (_) {}
+    }
+
+    // 3. Duplicate registration check
     const dupRes = await client.query(
       'SELECT id, status FROM event_registrations WHERE user_id = $1 AND event_id = $2',
       [userId, eventId]
@@ -74,28 +98,29 @@ export const registerForEvent = async (req, res) => {
       }
     }
 
-    // 3. Generate Digital Ticket & QR Code Data
+    // 4. Generate Digital Ticket & QR Code Data
     const ticketCode = generateTicketCode();
     const qrCodeData = await generateQRCodeDataUrl(ticketCode);
     const registrationId = crypto.randomUUID();
 
-    // 4. Insert or reactivate registration
+    // 5. Insert or reactivate registration
     let regRow;
     if (dupRes.rows.length > 0) {
       const updateRes = await client.query(
         `UPDATE event_registrations
-         SET ticket_code = $1, qr_code_data = $2, status = 'confirmed', registration_date = NOW(), updated_at = NOW()
+         SET ticket_code = $1, qr_code_data = $2, status = 'confirmed', registration_date = NOW(), updated_at = NOW(),
+             team_id = COALESCE($4, team_id), team_name = COALESCE($5, team_name)
          WHERE id = $3
          RETURNING *`,
-        [ticketCode, qrCodeData, dupRes.rows[0].id]
+        [ticketCode, qrCodeData, dupRes.rows[0].id, finalTeamId, finalTeamName]
       );
       regRow = updateRes.rows[0];
     } else {
       const insertRes = await client.query(
-        `INSERT INTO event_registrations (id, event_id, user_id, ticket_code, status, qr_code_data)
-         VALUES ($1, $2, $3, $4, 'confirmed', $5)
+        `INSERT INTO event_registrations (id, event_id, user_id, ticket_code, status, qr_code_data, team_id, team_name)
+         VALUES ($1, $2, $3, $4, 'confirmed', $5, $6, $7)
          RETURNING *`,
-        [registrationId, eventId, userId, ticketCode, qrCodeData]
+        [registrationId, eventId, userId, ticketCode, qrCodeData, finalTeamId, finalTeamName]
       );
       regRow = insertRes.rows[0];
     }
@@ -175,6 +200,15 @@ export const registerTeam = async (req, res) => {
     }
 
     const event = eventRes.rows[0];
+    const allowsTeams = Boolean(event.allow_teams !== undefined ? event.allow_teams : event.is_team_event);
+    if (!allowsTeams) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'This event is strictly for individual participation. Team registration is disabled.',
+      });
+    }
+
     const currentCount = parseInt(event.registered_count, 10) || 0;
     const maxCapacity = parseInt(event.max_capacity, 10) || 100;
     if (currentCount >= maxCapacity) {

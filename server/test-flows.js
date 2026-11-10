@@ -2548,6 +2548,187 @@ async function runTests() {
       'Test Case 41d: Organizer exports and downloads submissions CSV roster with deliverable URLs and student attributes'
     );
 
+    // =========================================================================
+    // 42. CONDITIONAL TEAM-BASED REGISTRATION (HACKATHONS VS WORKSHOPS)
+    // =========================================================================
+
+    // 42a: Organizer creates individual workshop with allowTeams: false
+    const tc42_workshopRes = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Fullstack Microservices Workshop',
+        description: 'Hands-on intensive individual workshop covering modern microservice architectures.',
+        category: 'Workshop',
+        eventDate: '2026-11-28',
+        startTime: '10:00',
+        endTime: '16:00',
+        venue: 'Lab Block B - 402',
+        maxCapacity: 60,
+        registrationDeadline: '2026-11-27',
+        allowTeams: false,
+        isTeamEvent: false,
+      }),
+    });
+    const tc42_workshopData = await tc42_workshopRes.json();
+    const workshopId = tc42_workshopData.event?.id || tc42_workshopData.event?._id;
+
+    // Approve the workshop
+    await fetch(`${BASE_URL}/admin/events/${workshopId}/approve`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    assert(
+      tc42_workshopRes.status === 201 &&
+        tc42_workshopData.success &&
+        tc42_workshopData.event?.allowTeams === false &&
+        tc42_workshopData.event?.isTeamEvent === false,
+      'Test Case 42a: Organizer creates individual workshop with allowTeams: false'
+    );
+
+    // 42b: Attempting team registration on allowTeams: false workshop rejected with 400
+    const tc42_invalidTeamRegRes = await fetch(`${BASE_URL}/registrations/team/${workshopId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({ teamName: 'Unauthorized Team' }),
+    });
+    const tc42_invalidTeamRegData = await tc42_invalidTeamRegRes.json();
+    assert(
+      tc42_invalidTeamRegRes.status === 400 &&
+        tc42_invalidTeamRegData.success === false,
+      'Test Case 42b: Attempting team registration for individual workshop (allowTeams: false) rejected with status 400'
+    );
+
+    // 42c: Student registers individually for allowTeams: false workshop; succeeds with immediate ticket
+    const tc42_soloWorkshopRegRes = await fetch(`${BASE_URL}/registrations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({ eventId: workshopId, bypassConflict: true }),
+    });
+    const tc42_soloWorkshopRegData = await tc42_soloWorkshopRegRes.json();
+    assert(
+      tc42_soloWorkshopRegRes.status === 201 &&
+        tc42_soloWorkshopRegData.success &&
+        !!tc42_soloWorkshopRegData.ticketCode,
+      'Test Case 42c: Student completes immediate solo registration for individual workshop'
+    );
+
+    // 42d: Organizer creates hackathon competition with allowTeams: true
+    const tc42_hackathonRes = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        title: 'CyberShield Collegiate Hackathon 2026',
+        description: 'Multi-round hackathon challenge for collegiate teams building cybersecurity defenses.',
+        category: 'Hackathon',
+        eventDate: '2026-11-29',
+        startTime: '09:00',
+        endTime: '21:00',
+        venue: 'Grand Innovation Complex',
+        maxCapacity: 120,
+        registrationDeadline: '2026-11-28',
+        allowTeams: true,
+        isTeamEvent: true,
+        teamSizeMin: 2,
+        teamSizeMax: 4,
+      }),
+    });
+    const tc42_hackathonData = await tc42_hackathonRes.json();
+    const hackId = tc42_hackathonData.event?.id || tc42_hackathonData.event?._id;
+
+    // Approve the hackathon
+    await fetch(`${BASE_URL}/admin/events/${hackId}/approve`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    assert(
+      tc42_hackathonRes.status === 201 &&
+        tc42_hackathonData.success &&
+        tc42_hackathonData.event?.allowTeams === true &&
+        tc42_hackathonData.event?.isTeamEvent === true,
+      'Test Case 42d: Organizer creates hackathon with allowTeams: true'
+    );
+
+    // 42e: Student creates a team for allowTeams: true hackathon; links team_id & team_name in event_registrations
+    const tc42_teamCreateRes = await fetch(`${BASE_URL}/events/${hackId}/teams`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        name: 'CyberDefenders Prime',
+      }),
+    });
+    const tc42_teamCreateData = await tc42_teamCreateRes.json();
+    const createdTeamId = tc42_teamCreateData.team?.id;
+
+    // Check student registrations for linked team info
+    const tc42_myRegsRes = await fetch(`${BASE_URL}/registrations/my`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const tc42_myRegsData = await tc42_myRegsRes.json();
+    const hackReg = tc42_myRegsData.registrations?.find((r) => r.eventId === hackId);
+
+    assert(
+      tc42_teamCreateRes.status === 201 &&
+        tc42_teamCreateData.success &&
+        !!createdTeamId &&
+        hackReg?.teamId === createdTeamId &&
+        hackReg?.teamName === 'CyberDefenders Prime',
+      'Test Case 42e: Team registration on allowTeams: true event succeeds and links team_id and team_name in registrations'
+    );
+
+    // 42f: Second student registers solo for allowTeams: true hackathon without teamId
+    const secondStudentEmail = `solo.student.${Date.now()}@college.edu`;
+    const secondStudentRegRes = await fetch(`${BASE_URL}/auth/student/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Solo Participant',
+        email: secondStudentEmail,
+        password: 'Password12345!',
+        studentId: 'SOLO-991',
+        department: 'Information Technology',
+      }),
+    });
+    const secondStudentRegData = await secondStudentRegRes.json();
+    const secondStudentToken = secondStudentRegData.token;
+
+    const tc42_soloHackRegRes = await fetch(`${BASE_URL}/registrations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${secondStudentToken}`,
+      },
+      body: JSON.stringify({
+        eventId: hackId,
+        bypassConflict: true,
+      }),
+    });
+    const tc42_soloHackRegData = await tc42_soloHackRegRes.json();
+
+    assert(
+      tc42_soloHackRegRes.status === 201 &&
+        tc42_soloHackRegData.success &&
+        tc42_soloHackRegData.registration?.teamId === null,
+      'Test Case 42f: Solo participant registers individually for team-enabled hackathon with immediate QR entry pass'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

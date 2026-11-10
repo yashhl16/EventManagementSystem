@@ -211,6 +211,7 @@ export const CreateEventPage: React.FC = () => {
         ticketPrice: isPaid ? Number(ticketPrice) : 0,
         eligibility,
         prerequisites,
+        allowTeams: isTeamEvent,
         isTeamEvent,
         teamMinSize: isTeamEvent ? Number(teamMinSize) : 1,
         teamMaxSize: isTeamEvent ? Number(teamMaxSize) : 1,
@@ -562,10 +563,10 @@ export const CreateEventPage: React.FC = () => {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Team Competition Settings
+                Enable Team-Based Competition / Hackathon Mode
               </h2>
               <p className="text-xs text-slate-400">
-                Enable for hackathons, robowars, and multi-member team competitions
+                Allow participants to form, invite, and register as teams (e.g. hackathons, robowars). If unchecked, registrations are strictly individual (default for workshops and seminars).
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">

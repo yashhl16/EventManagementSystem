@@ -43,6 +43,7 @@ model Event {
   capacity                  Int?
   bannerUrl                 String?
   status                    String              @default("upcoming")
+  allowTeams                Boolean             @default(false)
   isTeamEvent               Boolean             @default(false)
   maxTeamSize               Int                 @default(4)
   teamSizeMin               Int                 @default(1)
@@ -114,8 +115,9 @@ model Team {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  members     TeamMember[]
-  submissions Submission[]
+  members       TeamMember[]
+  submissions   Submission[]
+  registrations EventRegistration[]
 }
 
 model TeamMember {
@@ -138,6 +140,8 @@ model EventRegistration {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   ticketCode String   @unique
   status     String   @default("registered")
+  teamId     String?
+  team       Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
   teamName   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

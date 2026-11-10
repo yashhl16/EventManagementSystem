@@ -94,8 +94,11 @@ export const eventService = {
 
 /* ================= REGISTRATION API ================= */
 export const registrationService = {
-  registerForEvent: (eventId: string, bypassConflict: boolean = false) =>
-    api.post(`/registrations/register/${eventId}`, { bypassConflict }),
+  registerForEvent: (
+    eventId: string,
+    bypassConflict: boolean = false,
+    data?: { teamId?: string; teamName?: string; registrationType?: string }
+  ) => api.post(`/registrations/register/${eventId}`, { bypassConflict, ...data }),
 
   registerTeam: (eventId: string, teamName: string) =>
     api.post(`/registrations/team/${eventId}`, { teamName }),

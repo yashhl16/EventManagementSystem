@@ -46,6 +46,9 @@ export const EditEventPage: React.FC = () => {
   const [isPaid, setIsPaid] = useState(false);
   const [ticketPrice, setTicketPrice] = useState('0');
   const [tags, setTags] = useState('');
+  const [isTeamEvent, setIsTeamEvent] = useState(false);
+  const [teamMinSize, setTeamMinSize] = useState('2');
+  const [teamMaxSize, setTeamMaxSize] = useState('4');
   const [certificateTemplateUrl, setCertificateTemplateUrl] = useState('');
   const [certificateTemplateConfig, setCertificateTemplateConfig] = useState<CertificateTemplateConfig | null>(null);
 
@@ -120,6 +123,9 @@ export const EditEventPage: React.FC = () => {
           setIsPaid(Boolean(ev.isPaid));
           setTicketPrice(String(ev.ticketPrice || 0));
           setTags((ev.tags || []).join(', '));
+          setIsTeamEvent(Boolean(ev.allowTeams !== undefined ? ev.allowTeams : ev.isTeamEvent));
+          setTeamMinSize(String(ev.teamMinSize || (ev as any).teamSize?.min || 1));
+          setTeamMaxSize(String(ev.teamMaxSize || ev.maxTeamSize || (ev as any).teamSize?.max || 4));
           setCertificateTemplateUrl(ev.certificateTemplateUrl || '');
           setCertificateTemplateConfig(ev.certificateTemplateConfig || null);
         }
@@ -203,6 +209,10 @@ export const EditEventPage: React.FC = () => {
         registrationDeadline,
         isPaid,
         ticketPrice: isPaid ? Number(ticketPrice) : 0,
+        allowTeams: isTeamEvent,
+        isTeamEvent,
+        teamMinSize: isTeamEvent ? Number(teamMinSize) : 1,
+        teamMaxSize: isTeamEvent ? Number(teamMaxSize) : 1,
         certificateTemplateUrl: certificateTemplateUrl ? certificateTemplateUrl.trim() : '',
         certificateTemplateConfig: certificateTemplateConfig || undefined,
         tags: tags.split(',').map((t) => t.trim()),
@@ -437,6 +447,59 @@ export const EditEventPage: React.FC = () => {
               />
             </div>
           </div>
+        </div>
+
+        {/* Team Registrations */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Enable Team-Based Competition / Hackathon Mode
+              </h2>
+              <p className="text-xs text-slate-400">
+                Allow participants to form, invite, and register as teams (e.g. hackathons, robowars). If unchecked, registrations are strictly individual (default for workshops and seminars).
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isTeamEvent}
+                onChange={(e) => setIsTeamEvent(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+
+          {isTeamEvent && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Minimum Team Members
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={teamMinSize}
+                  onChange={(e) => setTeamMinSize(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Maximum Team Members
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={teamMaxSize}
+                  onChange={(e) => setTeamMaxSize(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Certificate Template Customization */}
