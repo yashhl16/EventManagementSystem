@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
@@ -46,6 +47,9 @@ app.use(
 
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+
+// Serve local public uploads (for stored deliverables & certificates)
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'server', 'public', 'uploads')));
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
@@ -135,6 +139,7 @@ app.use(['/api/announcements', '/announcements'], announcementRoutes);
 app.use(['/api/notifications', '/notifications'], notificationRoutes);
 app.use(['/api/teams', '/teams'], teamRoutes);
 app.use(['/api/submissions', '/submissions'], submissionRoutes);
+app.use(['/api/deliverables', '/deliverables'], submissionRoutes);
 app.use(['/api/lft', '/lft'], lftRoutes);
 app.use(['/api/rounds', '/rounds'], roundRoutes);
 

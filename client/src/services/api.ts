@@ -241,7 +241,8 @@ export const submissionService = {
     data: {
       title: string;
       description?: string;
-      fileUrl: string;
+      fileUrl?: string;
+      documentUrl?: string;
       fileName?: string;
       fileType: string;
       fileSize?: number;
@@ -250,6 +251,9 @@ export const submissionService = {
       roundId?: string | null;
     }
   ) => api.post(`/events/${eventId}/submit`, data),
+
+  submitDeliverables: (eventId: string, data: any) =>
+    api.post(`/events/${eventId}/deliverables`, data),
 
   getMySubmission: (eventId: string, roundId?: string) =>
     api.get(`/events/${eventId}/my-submission`, { params: { roundId } }),

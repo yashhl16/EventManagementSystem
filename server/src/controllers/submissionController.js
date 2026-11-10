@@ -8,45 +8,88 @@ import { validateSubmissionFile, storeDeliverableFile } from '../utils/fileStora
  */
 export const submitDeliverable = async (req, res) => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.eventId || req.params.id || req.body?.eventId || req.body?.event_id;
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event ID is required to submit deliverables.',
+        error: 'Event ID is required.',
+      });
+    }
+
     const {
       title,
       description = '',
       fileUrl,
+      file_url,
+      documentUrl,
+      document_url,
       fileData,
       fileName = 'deliverable.pdf',
+      file_name,
       fileType = 'application/pdf',
+      file_type,
       fileSize = 0,
+      file_size,
       githubUrl = '',
+      github_url,
       figmaUrl = '',
+      figma_url,
       roundId = null,
       round_id = null,
-    } = req.body;
+    } = req.body || {};
+
     const finalRoundId = roundId || round_id || null;
-    const finalFileUrl = fileUrl || fileData;
+    const finalFileUrl = fileUrl || file_url || documentUrl || document_url || fileData || '';
+    const finalFileName = fileName || file_name || 'deliverable.pdf';
+    const finalFileType = (fileType || file_type || 'application/pdf').slice(0, 255);
+    const finalFileSize = Number(fileSize || file_size) || 0;
+    const finalGithubUrl = (githubUrl || github_url || '').trim();
+    const finalFigmaUrl = (figmaUrl || figma_url || '').trim();
+    const finalDescription = (description || '').trim();
     const userId = req.user.id || req.user._id;
 
     // 1. Verify Event
     const eventRes = await query('SELECT * FROM events WHERE id = $1', [eventId]);
     if (eventRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Event not found.' });
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found.',
+        error: 'Event not found.',
+      });
     }
-    const event = eventRes.rows[0];
 
     // 2. Validate Deliverable Title
     const titleCheck = validateText(title, 'Submission title', 2, 200, true);
     if (!titleCheck.isValid) {
-      return res.status(400).json({ success: false, message: titleCheck.message });
+      return res.status(400).json({
+        success: false,
+        message: titleCheck.message,
+        error: titleCheck.message,
+      });
     }
 
     // 3. Validate Document/File Deliverable
     if (!finalFileUrl) {
-      return res.status(400).json({ success: false, message: 'Please provide or upload a project deliverable file (PDF, PPT, or DOC).' });
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide or upload a project deliverable file (PDF, PPT, or DOC).',
+        error: 'Please provide or upload a project deliverable file (PDF, PPT, or DOC).',
+      });
     }
 
-    const fileCheck = validateSubmissionFile({ fileName, fileType, fileSize, fileUrl: finalFileUrl });
+    const fileCheck = validateSubmissionFile({
+      fileName: finalFileName,
+      fileType: finalFileType,
+      fileSize: finalFileSize,
+      fileUrl: finalFileUrl,
+    });
     if (!fileCheck.isValid) {
-      return res.status(400).json({ success: false, message: fileCheck.message });
+      return res.status(400).json({
+        success: false,
+        message: fileCheck.message,
+        error: fileCheck.message,
+      });
     }
 
     // 4. Verify Registration & Determine Team or Individual context
@@ -69,21 +112,28 @@ export const submitDeliverable = async (req, res) => {
     if (teamRes.rows.length > 0) {
       teamId = teamRes.rows[0].id;
       teamName = teamRes.rows[0].name;
-    } else if (regRes.rows.length === 0) {
+    } else if (regRes.rows.length === 0 && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'You must register for this event before submitting project deliverables.',
+        error: 'You must register for this event before submitting project deliverables.',
       });
     }
 
-    // 5. Safely store file (Supabase, Vercel Blob, or resilient database store)
+    // 5. Safely store file (Supabase, Vercel Blob, Local Disk, or resilient database store)
     const stored = await storeDeliverableFile({
-      fileName,
-      fileType,
+      fileName: finalFileName,
+      fileType: finalFileType,
       fileUrl: finalFileUrl,
       eventId,
       teamId,
     });
+
+    const storedFileUrl = stored.fileUrl || finalFileUrl;
+    const storedDocumentUrl = stored.documentUrl || storedFileUrl;
+    const storedFileType = (stored.fileType || finalFileType).slice(0, 255);
+    const storedFileName = stored.fileName || finalFileName;
+    const storedFileSize = stored.fileSize || finalFileSize || 0;
 
     // 6. Check if a submission already exists for this round/event to allow seamless replacement/updating
     let existingSubRes;
@@ -120,20 +170,21 @@ export const submitDeliverable = async (req, res) => {
       const subId = existingSubRes.rows[0].id;
       const updateRes = await query(
         `UPDATE submissions
-         SET title = $1, description = $2, file_url = $3, file_type = $4,
-             file_name = $5, file_size = $6, github_url = $7, figma_url = $8,
-             user_id = $9, round_id = COALESCE($10, round_id), updated_at = NOW()
-         WHERE id = $11
+         SET title = $1, description = $2, file_url = $3, document_url = $4, file_type = $5,
+             file_name = $6, file_size = $7, github_url = $8, figma_url = $9,
+             user_id = $10, round_id = COALESCE($11, round_id), updated_at = NOW()
+         WHERE id = $12
          RETURNING *`,
         [
           titleCheck.value,
-          (description || '').trim(),
-          stored.fileUrl,
-          stored.fileType,
-          stored.fileName,
-          stored.fileSize || fileSize || 0,
-          (githubUrl || '').trim(),
-          (figmaUrl || '').trim(),
+          finalDescription,
+          storedFileUrl,
+          storedDocumentUrl,
+          storedFileType,
+          storedFileName,
+          storedFileSize,
+          finalGithubUrl,
+          finalFigmaUrl,
           userId,
           finalRoundId,
           subId,
@@ -145,8 +196,8 @@ export const submitDeliverable = async (req, res) => {
       const insertRes = await query(
         `INSERT INTO submissions (
           id, team_id, event_id, user_id, round_id, title, description,
-          file_url, file_type, file_name, file_size, github_url, figma_url
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          file_url, document_url, file_type, file_name, file_size, github_url, figma_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *`,
         [
           subId,
@@ -155,13 +206,14 @@ export const submitDeliverable = async (req, res) => {
           userId,
           finalRoundId,
           titleCheck.value,
-          (description || '').trim(),
-          stored.fileUrl,
-          stored.fileType,
-          stored.fileName,
-          stored.fileSize || fileSize || 0,
-          (githubUrl || '').trim(),
-          (figmaUrl || '').trim(),
+          finalDescription,
+          storedFileUrl,
+          storedDocumentUrl,
+          storedFileType,
+          storedFileName,
+          storedFileSize,
+          finalGithubUrl,
+          finalFigmaUrl,
         ]
       );
       savedSubmission = insertRes.rows[0];
@@ -180,8 +232,12 @@ export const submitDeliverable = async (req, res) => {
       isUpdate,
     });
   } catch (error) {
-    console.error('Error submitting deliverable:', error);
-    res.status(500).json({ success: false, message: 'Failed to submit deliverable.' });
+    console.error('Submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to submit deliverable.',
+      error: error.message || 'Failed to submit deliverable.',
+    });
   }
 };
 
@@ -190,7 +246,15 @@ export const submitDeliverable = async (req, res) => {
  */
 export const getMySubmission = async (req, res) => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.eventId || req.params.id || req.query.eventId || req.query.event_id;
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event ID is required.',
+        error: 'Event ID is required.',
+      });
+    }
+
     const { roundId } = req.query;
     const userId = req.user.id || req.user._id;
 
@@ -257,8 +321,12 @@ export const getMySubmission = async (req, res) => {
       submission: mapSubmission(subRes.rows[0]),
     });
   } catch (error) {
-    console.error('Error retrieving submission:', error);
-    res.status(500).json({ success: false, message: 'Failed to retrieve submission.' });
+    console.error('Submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to retrieve submission.',
+      error: error.message || 'Failed to retrieve submission.',
+    });
   }
 };
 
@@ -267,7 +335,14 @@ export const getMySubmission = async (req, res) => {
  */
 export const getEventSubmissions = async (req, res) => {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.eventId || req.params.id || req.query.eventId;
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event ID is required.',
+        error: 'Event ID is required.',
+      });
+    }
 
     const subsRes = await query(
       `SELECT s.*, t.name as team_name, t.invite_code,
@@ -290,7 +365,11 @@ export const getEventSubmissions = async (req, res) => {
       submissions,
     });
   } catch (error) {
-    console.error('Error retrieving event submissions:', error);
-    res.status(500).json({ success: false, message: 'Failed to retrieve event submissions.' });
+    console.error('Submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to retrieve event submissions.',
+      error: error.message || 'Failed to retrieve event submissions.',
+    });
   }
 };

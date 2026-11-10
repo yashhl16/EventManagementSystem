@@ -2203,6 +2203,117 @@ async function runTests() {
       'Test Case 37k: Student successfully deletes their LFT post via DELETE /api/events/:id/lft'
     );
 
+    // TEST CASE 38: Deliverable File Upload Limit & Submission Endpoint Resilience
+    // 38a: Submit .pptx presentation deliverable with full 73-character MIME type
+    const pptxMime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    const tc38_pptxRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/deliverables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Autonomous Vision Guidance System Presentation Deck',
+        description: 'Comprehensive 20-slide technical architecture presentation covering neural telemetry.',
+        fileName: 'autonomous_vision_final_deck.pptx',
+        fileType: pptxMime,
+        fileData: `data:${pptxMime};base64,UEsDBBQAAAAIAAA=`,
+        githubUrl: 'https://github.com/yashhl16/autonomous-drone-vision',
+        figmaUrl: 'https://figma.com/file/autonomous-drone-ui',
+        roundId: tc37_round1Id,
+      }),
+    });
+    const tc38_pptxData = await tc38_pptxRes.json();
+    assert(
+      (tc38_pptxRes.status === 200 || tc38_pptxRes.status === 201) &&
+        tc38_pptxData.success &&
+        tc38_pptxData.submission?.fileName === 'autonomous_vision_final_deck.pptx' &&
+        (tc38_pptxData.submission?.documentUrl || tc38_pptxData.submission?.fileUrl),
+      'Test Case 38a: Student successfully submits .pptx presentation deliverable via /events/:id/deliverables'
+    );
+
+    // 38b: Submit deliverable with empty description (verifying optional field alignment without non-null violations)
+    const tc38_emptyDescRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/deliverables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Autonomous Vision Minimal Description Submission',
+        description: '', // Intentionally empty description
+        fileName: 'minimal_submission.pdf',
+        fileType: 'application/pdf',
+        fileUrl: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+        roundId: tc37_round1Id,
+      }),
+    });
+    const tc38_emptyDescData = await tc38_emptyDescRes.json();
+    assert(
+      (tc38_emptyDescRes.status === 200 || tc38_emptyDescRes.status === 201) &&
+        tc38_emptyDescData.success &&
+        tc38_emptyDescData.submission?.description === '',
+      'Test Case 38b: Submitting deliverable with empty description succeeds without database non-null violation'
+    );
+
+    // 38c: Direct POST /api/submissions with eventId and documentUrl in payload
+    const tc38_directRes = await fetch(`${BASE_URL}/submissions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        eventId: tc37_eventId,
+        title: 'Autonomous Vision Direct Submissions Route Deck',
+        documentUrl: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+        fileName: 'direct_submissions_deck.pdf',
+        fileType: 'application/pdf',
+        roundId: tc37_round1Id,
+      }),
+    });
+    const tc38_directData = await tc38_directRes.json();
+    assert(
+      (tc38_directRes.status === 200 || tc38_directRes.status === 201) &&
+        tc38_directData.success &&
+        tc38_directData.submission?.title === 'Autonomous Vision Direct Submissions Route Deck' &&
+        tc38_directData.submission?.documentUrl,
+      'Test Case 38c: Direct POST /api/submissions creates deliverable using eventId and documentUrl'
+    );
+
+    // 38d: Deliverable endpoint returns clear JSON error response on invalid input
+    const tc38_errRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/deliverables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: '', // Missing title
+        fileUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
+      }),
+    });
+    const tc38_errData = await tc38_errRes.json();
+    assert(
+      tc38_errRes.status === 400 &&
+        tc38_errData.success === false &&
+        Boolean(tc38_errData.error || tc38_errData.message),
+      'Test Case 38d: Deliverable submission failure returns structured error object with descriptive error message'
+    );
+
+    // 38e: Verify GET /events/:id/deliverables and /events/:id/deliverables/my retrieve submission with documentUrl
+    const tc38_mySubRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/deliverables/my`, {
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    const tc38_mySubData = await tc38_mySubRes.json();
+    assert(
+      tc38_mySubRes.status === 200 &&
+        tc38_mySubData.hasSubmission &&
+        tc38_mySubData.submission?.documentUrl &&
+        tc38_mySubData.submission?.fileUrl,
+      'Test Case 38e: Deliverable GET endpoints return submission details with documentUrl and fileUrl aliases'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

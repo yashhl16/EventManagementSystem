@@ -26,12 +26,16 @@ const router = express.Router();
 // Mount Sub-routes on events
 router.use('/:eventId/teams', teamRoutes);
 router.use('/:eventId/submissions', submissionRoutes);
+router.use('/:eventId/deliverables', submissionRoutes);
 router.use('/:eventId/lft', lftRoutes);
 router.use('/:eventId/rounds', roundRoutes);
 
 // Direct event deliverable submission endpoints
 router.post('/:eventId/submit', protect, submitDeliverable);
+router.post('/:eventId/deliverables', protect, submitDeliverable);
 router.get('/:eventId/my-submission', protect, getMySubmission);
+router.get('/:eventId/deliverables', protect, getMySubmission);
+router.get('/:eventId/deliverables/my', protect, getMySubmission);
 
 // Public routes
 router.get('/', getEvents);

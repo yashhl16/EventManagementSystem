@@ -36,3 +36,7 @@ Thumbs.db
 # Local database caches
 .cache/
 mongodb-binaries/
+
+# Uploaded deliverable files (keep directory)
+server/public/uploads/*
+!server/public/uploads/**/.gitkeep

@@ -289,6 +289,7 @@ export interface Submission {
   title: string;
   description?: string;
   fileUrl: string;
+  documentUrl?: string;
   fileType: string;
   fileName?: string;
   fileSize?: number;

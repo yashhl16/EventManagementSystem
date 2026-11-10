@@ -62,11 +62,11 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size limit (20MB)
-    const MAX_SIZE = 20 * 1024 * 1024;
+    // Check size limit (25MB)
+    const MAX_SIZE = 25 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       setStatusMessage({
-        text: `File exceeds 20MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please choose a smaller file.`,
+        text: `File exceeds 25MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please choose a smaller file.`,
         isError: true,
       });
       return;
@@ -136,8 +136,13 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
         await onSubmissionSuccess();
       }
     } catch (err: any) {
+      const detailedError =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to submit deliverable.';
       setStatusMessage({
-        text: err.response?.data?.message || 'Failed to submit deliverables. Please check file format and try again.',
+        text: detailedError,
         isError: true,
       });
     } finally {
@@ -168,7 +173,7 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Submit your presentation slides, reports, and repository deliverables. Supported: .pdf, .ppt, .pptx, .doc, .docx (Max 20MB)
+            Submit your presentation slides, reports, and repository deliverables. Supported: .pdf, .ppt, .pptx, .doc, .docx (Max 25MB)
           </p>
         </div>
 
@@ -416,7 +421,7 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
                     <span>Click or drag and drop presentation / report file here</span>
                   )}
                 </p>
-                <p className="text-[11px] text-slate-400">PDF, PowerPoint, Word documents up to 20MB</p>
+                <p className="text-[11px] text-slate-400">PDF, PowerPoint, Word documents up to 25MB</p>
               </div>
             </div>
 
@@ -491,3 +496,6 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
     </div>
   );
 };
+
+export { DeliverableSubmissionForm } from './DeliverableSubmissionForm';
+export default EventSubmissionCard;

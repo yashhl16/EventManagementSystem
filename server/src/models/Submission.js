@@ -29,7 +29,11 @@ const submissionSchema = new mongoose.Schema(
     },
     fileUrl: {
       type: String,
-      required: [true, 'Please provide a file URL or uploaded document'],
+      default: '',
+    },
+    documentUrl: {
+      type: String,
+      default: '',
     },
     fileType: {
       type: String,

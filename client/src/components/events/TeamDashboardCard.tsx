@@ -126,8 +126,8 @@ export const TeamDashboardCard: React.FC<TeamDashboardCardProps> = ({
       return;
     }
 
-    if (file.size > 20 * 1024 * 1024) {
-      setSubError(`File size exceeds the 20MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`);
+    if (file.size > 25 * 1024 * 1024) {
+      setSubError(`File size exceeds the 25MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`);
       e.target.value = '';
       return;
     }
@@ -182,7 +182,12 @@ export const TeamDashboardCard: React.FC<TeamDashboardCardProps> = ({
       setSelectedFile(null);
       await onRefresh();
     } catch (err: any) {
-      setSubError(err.response?.data?.message || 'Failed to submit deliverables.');
+      setSubError(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to submit deliverable.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -523,7 +528,7 @@ export const TeamDashboardCard: React.FC<TeamDashboardCardProps> = ({
                   )}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Accepted formats: PDF, PPT, PPTX, DOC, DOCX (Max size: 20MB)
+                  Accepted formats: PDF, PPT, PPTX, DOC, DOCX (Max size: 25MB)
                 </p>
                 <input
                   type="file"
