@@ -16,6 +16,8 @@ export interface User {
   graduationYear?: number;
   phone?: string;
   avatar?: string;
+  avatarUrl?: string;
+  profilePicture?: string;
   bio?: string;
   interests?: string[];
   organizationName?: string;

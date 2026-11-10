@@ -36,6 +36,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
     { to: '/organizer/create-event', label: 'Create New Event', icon: PlusCircle },
     { to: '/organizer/scan', label: 'QR Pass Scanner & Gatekeeper', icon: QrCode },
     { to: '/organizer/announcements', label: 'Event Announcements', icon: Megaphone },
+    { to: '/profile', label: 'Profile Settings', icon: User },
     { to: '/events', label: 'View Public Hub', icon: Compass },
   ];
 
@@ -46,6 +47,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
     { to: '/admin/users', label: 'User & Role Access', icon: Users },
     { to: '/admin/analytics', label: 'Campus Analytics', icon: BarChart3 },
     { to: '/admin/audit-logs', label: 'System Audit Logs', icon: FileText },
+    { to: '/profile', label: 'Profile Settings', icon: User },
   ];
 
   const links = role === 'admin' ? adminLinks : role === 'organizer' ? organizerLinks : studentLinks;
@@ -101,7 +103,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
             <img
               src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'}
               alt={user?.name}
-              className="h-8 w-8 rounded-lg object-cover shrink-0"
+              className="h-8 w-8 rounded-full object-cover shrink-0"
             />
             <div className="truncate">
               <p className="truncate text-xs font-bold text-slate-900 dark:text-white">{user?.name}</p>

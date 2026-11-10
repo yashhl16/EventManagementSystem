@@ -430,16 +430,20 @@ export const getMe = async (req, res) => {
  */
 export const updateProfile = async (req, res) => {
   try {
-    // Security: Strictly strip email and username to prevent modification
+    // Security: Strictly strip email, username, and role to prevent modification
     delete req.body.email;
     delete req.body.username;
+    delete req.body.role;
 
     const {
       name,
       fullName,
       studentId,
       rollNumber,
+      employeeId,
+      adminId,
       avatar,
+      avatarUrl,
       profilePicture,
       phone,
       bio,
@@ -447,6 +451,8 @@ export const updateProfile = async (req, res) => {
       graduationYear,
       interests,
       organizationName,
+      designation,
+      title,
     } = req.body;
     const userId = req.user.id || req.user._id;
 
@@ -462,14 +468,31 @@ export const updateProfile = async (req, res) => {
     const targetStudentId = rollNumber !== undefined ? rollNumber : studentId;
     if (targetStudentId !== undefined && targetStudentId !== null) {
       const trimmed = String(targetStudentId).trim();
-      const check = validateText(trimmed, 'Roll number / Student ID', 1, 50, false);
-      if (!check.isValid) return res.status(400).json({ success: false, message: check.message });
-      cleanStudentId = check.value;
+      if (trimmed === '') {
+        cleanStudentId = '';
+      } else {
+        const check = validateText(trimmed, 'Roll number / Student ID', 0, 50, false);
+        if (!check.isValid) return res.status(400).json({ success: false, message: check.message });
+        cleanStudentId = check.value;
+      }
+    }
+
+    let cleanEmployeeId = null;
+    const targetEmployeeId = employeeId !== undefined ? employeeId : adminId;
+    if (targetEmployeeId !== undefined && targetEmployeeId !== null) {
+      const trimmedEmp = String(targetEmployeeId).trim();
+      if (trimmedEmp === '') {
+        cleanEmployeeId = '';
+      } else {
+        const check = validateText(trimmedEmp, 'Employee / Admin ID', 0, 50, false);
+        if (!check.isValid) return res.status(400).json({ success: false, message: check.message });
+        cleanEmployeeId = check.value;
+      }
     }
 
     let cleanAvatar = null;
-    const targetAvatar = profilePicture !== undefined ? profilePicture : avatar;
-    if (targetAvatar !== undefined && targetAvatar !== null && String(targetAvatar).trim() !== '') {
+    const targetAvatar = profilePicture !== undefined ? profilePicture : (avatarUrl !== undefined ? avatarUrl : avatar);
+    if (targetAvatar !== undefined && targetAvatar !== null) {
       cleanAvatar = String(targetAvatar).trim();
     }
 
@@ -497,8 +520,9 @@ export const updateProfile = async (req, res) => {
     }
 
     let cleanOrg = null;
-    if (organizationName !== undefined && organizationName !== null) {
-      const check = validateText(organizationName, 'Organization name', 0, 150, false);
+    const targetOrg = organizationName !== undefined ? organizationName : (designation !== undefined ? designation : title);
+    if (targetOrg !== undefined && targetOrg !== null) {
+      const check = validateText(targetOrg, 'Organization name / Designation', 0, 150, false);
       if (!check.isValid) return res.status(400).json({ success: false, message: check.message });
       cleanOrg = check.value;
     }
@@ -513,9 +537,11 @@ export const updateProfile = async (req, res) => {
            interests = COALESCE($6, interests),
            organization_name = COALESCE($7, organization_name),
            student_id = COALESCE($8, student_id),
-           avatar = COALESCE($9, avatar),
+           employee_id = COALESCE($9, employee_id),
+           admin_id = COALESCE($9, admin_id),
+           avatar = COALESCE($10, avatar),
            updated_at = NOW()
-       WHERE id = $10
+       WHERE id = $11
        RETURNING *`,
       [
         cleanName,
@@ -526,10 +552,26 @@ export const updateProfile = async (req, res) => {
         interests ? JSON.stringify(interests) : null,
         cleanOrg,
         cleanStudentId,
+        cleanEmployeeId,
         cleanAvatar,
         userId,
       ]
     );
+
+    // Sync event host details if an organizer updates their name or organization
+    if (cleanName || cleanOrg) {
+      try {
+        await query(
+          `UPDATE events
+           SET organizer_name = COALESCE($1, organizer_name),
+               updated_at = NOW()
+           WHERE creator_id = $2`,
+          [cleanOrg || cleanName, userId]
+        );
+      } catch (_) {
+        // Non-blocking sync
+      }
+    }
 
     const user = mapUser(updateRes.rows[0]);
     res.status(200).json({

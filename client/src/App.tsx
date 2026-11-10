@@ -102,6 +102,7 @@ export const App: React.FC = () => {
         <Route path="/organizer/attendance-scanner" element={<QRScanAttendancePage />} />
         <Route path="/organizer/scan" element={<OrganizerScanPassPage />} />
         <Route path="/organizer/announcements" element={<OrganizerAnnouncementsPage />} />
+        <Route path="/organizer/profile" element={<StudentProfilePage />} />
       </Route>
 
       {/* Administrator Protected Portal */}
@@ -120,6 +121,7 @@ export const App: React.FC = () => {
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
         <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
+        <Route path="/admin/profile" element={<StudentProfilePage />} />
       </Route>
 
       {/* 404 Fallback */}

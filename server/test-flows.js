@@ -1829,6 +1829,131 @@ async function runTests() {
       'Test Case 35h: Administrator accesses campus-wide registrations directory with global metrics'
     );
 
+    // ==========================================
+    // TEST CASE 36: Full Profile Management for Organizers & Admins with Avatar Sync
+    // ==========================================
+    const newOrgAvatar = 'https://images.unsplash.com/photo-organizer-avatar-2026.png';
+    const newAdminAvatar = 'https://images.unsplash.com/photo-admin-avatar-2026.png';
+
+    // 36a: Organizer updates full name, avatar, and organization credentials via PUT /api/user/profile
+    const updateOrgRes = await fetch(`${BASE_URL}/user/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        fullName: 'Dr. Sarah Connor Updated',
+        organizationName: 'Robotics & AI Innovation Hub',
+        avatarUrl: newOrgAvatar,
+        department: 'School of Advanced Computing',
+        phone: '9876543211',
+        bio: 'Directing robotics initiatives, autonomous competitions, and hackathons.',
+        // Attacker attempts to change email and escalate role:
+        email: 'hacked.organizer@badactor.com',
+        role: 'admin',
+      }),
+    });
+    const updateOrgData = await updateOrgRes.json();
+    assert(
+      updateOrgRes.status === 200 &&
+        updateOrgData.success &&
+        updateOrgData.user?.fullName === 'Dr. Sarah Connor Updated' &&
+        updateOrgData.user?.organizationName === 'Robotics & AI Innovation Hub' &&
+        updateOrgData.user?.avatar === newOrgAvatar &&
+        updateOrgData.user?.role === 'organizer' &&
+        updateOrgData.user?.email !== 'hacked.organizer@badactor.com',
+      'Test Case 36a: Organizer successfully updates name, organizationName, and avatar while email and role remain strictly protected'
+    );
+
+    // 36b: Organizer profile changes immediately reflected in GET /api/auth/me
+    const getOrgMeRes = await fetch(`${BASE_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const getOrgMeData = await getOrgMeRes.json();
+    assert(
+      getOrgMeRes.status === 200 &&
+        getOrgMeData.user?.fullName === 'Dr. Sarah Connor Updated' &&
+        getOrgMeData.user?.organizationName === 'Robotics & AI Innovation Hub' &&
+        getOrgMeData.user?.avatar === newOrgAvatar &&
+        getOrgMeData.user?.avatarUrl === newOrgAvatar,
+      'Test Case 36b: Organizer session retrieval (GET /api/auth/me) returns updated name, avatarUrl, and organization'
+    );
+
+    // 36c: Event host card reflects updated organizer details via GET /api/events/:id
+    const updatedEvtRes = await fetch(`${BASE_URL}/events/${templateEventId}`);
+    const updatedEvtData = await updatedEvtRes.json();
+    assert(
+      updatedEvtRes.status === 200 &&
+        (updatedEvtData.event?.organizer?.name === 'Dr. Sarah Connor Updated' ||
+          updatedEvtData.event?.organizer?.organizationName === 'Robotics & AI Innovation Hub'),
+      'Test Case 36c: Event details API dynamically returns updated organizer avatar and organization metadata'
+    );
+
+    // 36d: Admin updates full name, designating title, employee/admin ID, and avatar via PUT /api/user/profile
+    const updateAdminRes = await fetch(`${BASE_URL}/user/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        fullName: 'Chief Administrator Vance Updated',
+        organizationName: 'Office of Campus Administration & Oversight',
+        employeeId: 'ADM-EXEC-001',
+        department: 'Institutional Governance',
+        avatarUrl: newAdminAvatar,
+        phone: '9876543212',
+        bio: 'Institutional administration and campus compliance supervisor.',
+        // Attacker attempts to change email:
+        email: 'admin.spoofed@campus.edu',
+      }),
+    });
+    const updateAdminData = await updateAdminRes.json();
+    assert(
+      updateAdminRes.status === 200 &&
+        updateAdminData.success &&
+        updateAdminData.user?.fullName === 'Chief Administrator Vance Updated' &&
+        updateAdminData.user?.organizationName === 'Office of Campus Administration & Oversight' &&
+        updateAdminData.user?.avatar === newAdminAvatar &&
+        updateAdminData.user?.role === 'admin' &&
+        updateAdminData.user?.email !== 'admin.spoofed@campus.edu',
+      'Test Case 36d: Administrator successfully updates full name, designating office title, and avatar with locked email'
+    );
+
+    // 36e: Admin profile changes verified via GET /api/auth/me
+    const getAdminMeRes = await fetch(`${BASE_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    const getAdminMeData = await getAdminMeRes.json();
+    assert(
+      getAdminMeRes.status === 200 &&
+        getAdminMeData.user?.fullName === 'Chief Administrator Vance Updated' &&
+        getAdminMeData.user?.organizationName === 'Office of Campus Administration & Oversight' &&
+        getAdminMeData.user?.avatar === newAdminAvatar,
+      'Test Case 36e: Administrator session retrieval (GET /api/auth/me) reflects updated administrative profile credentials'
+    );
+
+    // 36f: PATCH /api/user/profile also supports partial profile updates
+    const patchOrgRes = await fetch(`${BASE_URL}/user/profile`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        phone: '9876543213',
+      }),
+    });
+    const patchOrgData = await patchOrgRes.json();
+    assert(
+      patchOrgRes.status === 200 &&
+        patchOrgData.success &&
+        patchOrgData.user?.phone === '9876543213' &&
+        patchOrgData.user?.fullName === 'Dr. Sarah Connor Updated',
+      'Test Case 36f: PATCH /api/user/profile supports partial updates while preserving existing credentials'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

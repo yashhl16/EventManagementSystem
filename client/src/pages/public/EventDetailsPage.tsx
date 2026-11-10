@@ -442,14 +442,14 @@ export const EventDetailsPage: React.FC = () => {
                     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200'
                   }
                   alt={organizer?.name}
-                  className="h-14 w-14 rounded-2xl object-cover shrink-0"
+                  className="h-14 w-14 rounded-full object-cover shrink-0"
                 />
                 <div>
                   <h4 className="font-bold text-base text-slate-900 dark:text-white">
                     {organizer?.name || event.organizerName}
                   </h4>
                   <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
-                    {event.organizerName || organizer?.organizationName || 'Campus Faculty Advisor'}
+                    {organizer?.organizationName || event.organizerName || 'Campus Faculty Advisor'}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Contact: {event.organizerContact || organizer?.email}

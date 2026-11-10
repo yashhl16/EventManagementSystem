@@ -145,7 +145,18 @@ export const getEvents = async (req, res) => {
 export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
-    const eventRes = await query('SELECT * FROM events WHERE id = $1', [id]);
+    const eventRes = await query(
+      `SELECT e.*,
+              u.name as creator_name,
+              u.email as creator_email,
+              u.avatar as creator_avatar,
+              u.organization_name as creator_organization_name,
+              u.department as creator_department
+       FROM events e
+       LEFT JOIN users u ON e.creator_id = u.id
+       WHERE e.id = $1`,
+      [id]
+    );
 
     if (eventRes.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Event not found.' });

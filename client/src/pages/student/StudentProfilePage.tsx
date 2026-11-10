@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  User,
+  User as UserIcon,
   Mail,
-  BookOpen,
   Sparkles,
   Lock,
   CheckCircle2,
@@ -10,6 +9,9 @@ import {
   Phone,
   Camera,
   Upload,
+  Building,
+  Briefcase,
+  IdCard,
   ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -47,15 +49,20 @@ const DEPARTMENT_OPTIONS = [
   'Electrical Engineering',
   'Management Studies',
   'General Engineering',
+  'Campus Administration',
 ];
 
 export const StudentProfilePage: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { user, role, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(user?.fullName || user?.name || '');
   const [rollNumber, setRollNumber] = useState(user?.rollNumber || user?.studentId || '');
-  const [department, setDepartment] = useState(user?.department || 'Computer Science & Engineering');
+  const [organizationName, setOrganizationName] = useState(user?.organizationName || '');
+  const [employeeId, setEmployeeId] = useState(user?.employeeId || user?.adminId || '');
+  const [department, setDepartment] = useState(
+    user?.department || (role === 'admin' ? 'Campus Administration' : role === 'organizer' ? 'Event Organizing Committee' : 'Computer Science & Engineering')
+  );
   const [avatar, setAvatar] = useState(user?.avatar || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [bio, setBio] = useState(user?.bio || '');
@@ -74,6 +81,8 @@ export const StudentProfilePage: React.FC = () => {
     if (user) {
       setName(user.fullName || user.name || '');
       setRollNumber(user.rollNumber || user.studentId || '');
+      setOrganizationName(user.organizationName || '');
+      setEmployeeId(user.employeeId || user.adminId || '');
       if (user.department) setDepartment(user.department);
       if (user.avatar) setAvatar(user.avatar);
       if (user.phone) setPhone(user.phone);
@@ -129,10 +138,21 @@ export const StudentProfilePage: React.FC = () => {
       return;
     }
 
-    const rollCheck = validateText(rollNumber, 'Roll number / Student ID', 0, 50, false);
-    if (!rollCheck.isValid) {
-      setProfileError(rollCheck.message);
-      return;
+    if (role === 'student' && rollNumber) {
+      const rollCheck = validateText(rollNumber, 'Roll number / Student ID', 0, 50, false);
+      if (!rollCheck.isValid) {
+        setProfileError(rollCheck.message);
+        return;
+      }
+    }
+
+    if (organizationName) {
+      const orgLabel = role === 'admin' ? 'Designating Title / Institutional Office' : 'Organization Name';
+      const orgCheck = validateText(organizationName, orgLabel, 0, 150, false);
+      if (!orgCheck.isValid) {
+        setProfileError(orgCheck.message);
+        return;
+      }
     }
 
     const phoneCheck = validatePhone(phone, false);
@@ -159,10 +179,14 @@ export const StudentProfilePage: React.FC = () => {
       const payload = {
         name: nameCheck.normalized,
         fullName: nameCheck.normalized,
-        studentId: rollCheck.normalized || rollNumber.trim(),
-        rollNumber: rollCheck.normalized || rollNumber.trim(),
+        studentId: rollNumber.trim(),
+        rollNumber: rollNumber.trim(),
+        employeeId: employeeId.trim(),
+        adminId: employeeId.trim(),
+        organizationName: organizationName.trim(),
         department: deptCheck.normalized || department,
         avatar: avatar || '',
+        avatarUrl: avatar || '',
         profilePicture: avatar || '',
         phone: phoneCheck.normalized,
         bio: bioCheck.normalized,
@@ -173,7 +197,7 @@ export const StudentProfilePage: React.FC = () => {
 
       if (res.data.success) {
         updateUser(res.data.user);
-        setProfileSuccess('Profile updated successfully! Name, roll number, department, and avatar updated.');
+        setProfileSuccess('Profile updated successfully! Name, avatar, and role credentials updated.');
         setTimeout(() => setProfileSuccess(''), 4500);
       }
     } catch (err: any) {
@@ -218,15 +242,35 @@ export const StudentProfilePage: React.FC = () => {
     }
   };
 
+  // Dynamic header titles based on role
+  const pageTitle =
+    role === 'admin'
+      ? 'Institutional Administrator Profile'
+      : role === 'organizer'
+      ? 'Organizer Studio Profile & Credentials'
+      : 'Academic Profile & Preferences';
+
+  const pageSubtitle =
+    role === 'admin'
+      ? 'Manage your platform administration credentials, institutional office details, and circular avatar.'
+      : role === 'organizer'
+      ? 'Manage your event hosting organization, contact details, and public avatar shown on campus event cards.'
+      : 'Manage your personal university credentials, profile picture, and curate interest tags used by the AI event recommendation engine.';
+
+  const sectionHeader =
+    role === 'admin'
+      ? 'Administrator Identity & Platform Authority'
+      : role === 'organizer'
+      ? 'Organizer Information & Studio Credentials'
+      : 'Personal Information & Student Credentials';
+
   return (
     <div className="space-y-8 pb-12 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-          Academic Profile & Preferences
+          {pageTitle}
         </h1>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Manage your personal university credentials, profile picture, and curate interest tags used by the AI event recommendation engine.
-        </p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{pageSubtitle}</p>
       </div>
 
       {profileSuccess && (
@@ -245,12 +289,19 @@ export const StudentProfilePage: React.FC = () => {
 
       {/* Profile Form */}
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white border-b border-slate-100 pb-3 dark:border-slate-800">
-          Personal Information & Credentials
+        <h3 className="text-base font-bold text-slate-900 dark:text-white border-b border-slate-100 pb-3 dark:border-slate-800 flex items-center gap-2">
+          {role === 'admin' ? (
+            <ShieldCheck className="h-4 w-4 text-purple-600" />
+          ) : role === 'organizer' ? (
+            <Briefcase className="h-4 w-4 text-indigo-600" />
+          ) : (
+            <UserIcon className="h-4 w-4 text-indigo-600" />
+          )}
+          {sectionHeader}
         </h3>
 
         <form onSubmit={handleSaveProfile} className="mt-6 space-y-6">
-          {/* Avatar / Profile Picture Upload */}
+          {/* Avatar / Profile Picture Upload (Available for ALL roles) */}
           <div className="flex flex-col sm:flex-row items-center gap-5 pb-6 border-b border-slate-100 dark:border-slate-800">
             <div className="relative group">
               <img
@@ -258,22 +309,22 @@ export const StudentProfilePage: React.FC = () => {
                   avatar ||
                   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'
                 }
-                alt={name || 'Student Profile'}
-                className="h-20 w-20 rounded-2xl object-cover border-2 border-indigo-500/30 shadow-md transition-all group-hover:opacity-90"
+                alt={name || 'User Profile'}
+                className="h-20 w-20 rounded-full object-cover border-2 border-indigo-500/30 shadow-md transition-all group-hover:opacity-90"
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-2 -right-2 p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-transform hover:scale-110 cursor-pointer"
+                className="absolute -bottom-1 -right-1 p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-md transition-transform hover:scale-110 cursor-pointer"
                 title="Upload new avatar"
               >
-                <Camera className="h-4 w-4" />
+                <Camera className="h-3.5 w-3.5" />
               </button>
             </div>
 
             <div className="flex-1 text-center sm:text-left space-y-1.5">
               <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Profile Picture
+                Profile Picture & Avatar
               </h4>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 <Button
@@ -297,7 +348,7 @@ export const StudentProfilePage: React.FC = () => {
                 )}
               </div>
               <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                Supports PNG, JPG, or JPEG format (max 5MB). Syncs automatically across entry passes and top navigation.
+                Supports PNG, JPG, or JPEG format (max 5MB). Syncs automatically across top navigation and event host details.
               </p>
               <input
                 ref={fileInputRef}
@@ -311,7 +362,7 @@ export const StudentProfilePage: React.FC = () => {
 
           {/* Form Fields: Editable & Read-Only */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {/* Full Name (Editable, max 60 chars) */}
+            {/* Full Name (Editable, max 60 chars across ALL roles) */}
             <div>
               <div className="flex justify-between items-center">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -325,7 +376,7 @@ export const StudentProfilePage: React.FC = () => {
                 maxLength={60}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Yash Patil"
+                placeholder="e.g. Alex Johnson"
                 className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
               />
               <span className="mt-1 block text-[11px] text-slate-400">
@@ -333,28 +384,70 @@ export const StudentProfilePage: React.FC = () => {
               </span>
             </div>
 
-            {/* Roll Number / Student ID (Editable) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Roll Number / Student ID
-              </label>
-              <input
-                type="text"
-                maxLength={50}
-                value={rollNumber}
-                onChange={(e) => setRollNumber(e.target.value)}
-                placeholder="e.g. SGU2023CS0101"
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-              />
-              <span className="mt-1 block text-[11px] text-slate-400">
-                University enrollment or PRN number
-              </span>
-            </div>
+            {/* Role-Specific Field: Organization / Designating Title OR Student ID */}
+            {role === 'student' ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Roll Number / Student ID
+                </label>
+                <input
+                  type="text"
+                  maxLength={50}
+                  value={rollNumber}
+                  onChange={(e) => setRollNumber(e.target.value)}
+                  placeholder="e.g. SGU2023CS0101"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+                <span className="mt-1 block text-[11px] text-slate-400">
+                  University enrollment or PRN number
+                </span>
+              </div>
+            ) : role === 'organizer' ? (
+              <div>
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Organization / Club / Chapter <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">{organizationName.length}/150</span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={150}
+                  value={organizationName}
+                  onChange={(e) => setOrganizationName(e.target.value)}
+                  placeholder="e.g. Robotics Club, ACM Student Chapter"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+                <span className="mt-1 block text-[11px] text-slate-400">
+                  Official host title shown on your event details
+                </span>
+              </div>
+            ) : (
+              <div>
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Designating Title / Institutional Office
+                  </label>
+                  <span className="text-[11px] text-slate-400">{organizationName.length}/150</span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={150}
+                  value={organizationName}
+                  onChange={(e) => setOrganizationName(e.target.value)}
+                  placeholder="e.g. Chief Campus Administrator, Office of Dean Student Welfare"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+                <span className="mt-1 block text-[11px] text-slate-400">
+                  Administrative authority title for platform moderation
+                </span>
+              </div>
+            )}
 
-            {/* College Email (Read Only / Locked) */}
+            {/* College Email (Read Only / Locked for ALL roles) */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                College Email (Read Only)
+                Official Email (Read Only)
               </label>
               <div className="relative mt-1.5">
                 <input
@@ -374,7 +467,7 @@ export const StudentProfilePage: React.FC = () => {
               </p>
             </div>
 
-            {/* Username (Read Only / Locked) */}
+            {/* Username (Read Only / Locked for ALL roles) */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Username (Read Only)
@@ -397,32 +490,63 @@ export const StudentProfilePage: React.FC = () => {
               </p>
             </div>
 
-            {/* Academic Department (Editable select dropdown) */}
+            {/* Department / Institutional Division */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Academic Department
+                {role === 'student' ? 'Academic Department' : 'Assigned Department / Division'}
               </label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
-              >
-                {DEPARTMENT_OPTIONS.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-                {!DEPARTMENT_OPTIONS.includes(department) && department && (
-                  <option value={department}>{department}</option>
-                )}
-              </select>
+              {role === 'student' ? (
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                >
+                  {DEPARTMENT_OPTIONS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                  {!DEPARTMENT_OPTIONS.includes(department) && department && (
+                    <option value={department}>{department}</option>
+                  )}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  maxLength={100}
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="e.g. School of Computer Engineering, Campus IT Operations"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+              )}
               <span className="mt-1 block text-[11px] text-slate-400">
-                Select your assigned university branch
+                {role === 'student' ? 'Select your university branch' : 'Academic department or campus division'}
               </span>
             </div>
 
-            {/* Contact Mobile (Optional, Strictly 10 digits) */}
-            <div>
+            {/* Role-Specific Extra ID or Contact Phone */}
+            {role !== 'student' ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {role === 'admin' ? 'Administrator Badge / Staff ID' : 'Employee / Faculty PRN'}
+                </label>
+                <input
+                  type="text"
+                  maxLength={50}
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  placeholder={role === 'admin' ? 'e.g. ADM-2026-09' : 'e.g. FAC-CSE-402'}
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
+                />
+                <span className="mt-1 block text-[11px] text-slate-400">
+                  Institutional credential identification
+                </span>
+              </div>
+            ) : null}
+
+            {/* Contact Mobile (Optional, Strictly 10 digits across all roles) */}
+            <div className={role === 'student' ? '' : 'sm:col-span-2'}>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Contact Mobile (Optional)
               </label>
@@ -440,11 +564,15 @@ export const StudentProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Bio / Academic Interests */}
+          {/* Bio / Host Overview */}
           <div>
             <div className="flex justify-between items-center">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Bio / Academic Interests
+                {role === 'admin'
+                  ? 'Administrator Bio & Platform Overview'
+                  : role === 'organizer'
+                  ? 'Organizer Bio & Host Overview'
+                  : 'Bio / Academic Interests'}
               </label>
               <span className={`text-[11px] ${bio.length > 900 ? 'text-amber-500 font-semibold' : 'text-slate-400'}`}>
                 {bio.length}/1000 characters
@@ -455,44 +583,52 @@ export const StudentProfilePage: React.FC = () => {
               maxLength={1000}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell other students and event organizers about your technical focus or campus extracurriculars..."
+              placeholder={
+                role === 'admin'
+                  ? 'Institutional responsibilities, platform supervision, and campus lifecycle oversight...'
+                  : role === 'organizer'
+                  ? 'Brief overview of your organizing committee, student society, or workshop series...'
+                  : 'Tell other students and event organizers about your technical focus or campus extracurriculars...'
+              }
               className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
             />
           </div>
 
-          {/* AI Recommendation Interest Tags */}
-          <div className="pt-2">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-indigo-500" />
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                AI Recommendation Interests
-              </label>
-            </div>
-            <p className="mt-1 text-[11px] text-slate-400">
-              The AI recommender pairs these tags with upcoming event descriptions to calculate your personalized match scores.
-            </p>
+          {/* AI Recommendation Interest Tags (Students) */}
+          {role === 'student' && (
+            <div className="pt-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-indigo-500" />
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  AI Recommendation Interests
+                </label>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                The AI recommender pairs these tags with upcoming event descriptions to calculate your personalized match scores.
+              </p>
 
-            <div className="mt-3 flex flex-wrap gap-2">
-              {AVAILABLE_INTERESTS.map((tag) => {
-                const isSelected = interests.includes(tag);
-                return (
-                  <button
-                    type="button"
-                    key={tag}
-                    onClick={() => toggleInterest(tag)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                      isSelected
-                        ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-none'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    {isSelected ? '✓ ' : '+ '}
-                    {tag}
-                  </button>
-                );
-              })}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {AVAILABLE_INTERESTS.map((tag) => {
+                  const isSelected = interests.includes(tag);
+                  return (
+                    <button
+                      type="button"
+                      key={tag}
+                      onClick={() => toggleInterest(tag)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-none'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {isSelected ? '✓ ' : '+ '}
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="pt-4 flex justify-end">
             <Button variant="primary" type="submit" isLoading={isSaving}>
@@ -502,7 +638,7 @@ export const StudentProfilePage: React.FC = () => {
         </form>
       </div>
 
-      {/* Password Reset Section */}
+      {/* Password Reset Section (Available to ALL authenticated roles) */}
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h3 className="text-base font-bold text-slate-900 dark:text-white border-b border-slate-100 pb-3 dark:border-slate-800 flex items-center gap-2">
           <Lock className="h-4 w-4 text-indigo-500" />
