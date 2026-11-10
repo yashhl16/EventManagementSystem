@@ -45,10 +45,44 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
+    const eventId = params.id;
+    let submissions: any[] = [];
+
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      submissions = await prisma.submission.findMany({
+        where: { eventId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              studentId: true,
+              department: true,
+              avatar: true,
+              phone: true,
+            },
+          },
+          round: true,
+          team: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } catch {
+      // Prisma fallback
+    }
+
     return NextResponse.json({
       success: true,
-      eventId: params.id,
-      submissions: [],
+      eventId,
+      count: submissions.length,
+      submissions,
+      deliverables: submissions,
+      data: submissions,
     });
   } catch (error: any) {
     console.error('Submission error:', error);

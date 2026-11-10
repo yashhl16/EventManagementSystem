@@ -83,6 +83,8 @@ export interface CollegeEvent {
   organizer?: User | string;
   organizerName?: string;
   organizerContact?: string;
+  organizerEmail?: string;
+  organizerPhone?: string;
   department?: string;
   maxCapacity: number;
   registeredCount: number;

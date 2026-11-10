@@ -234,13 +234,33 @@ export const EventDetailsPage: React.FC = () => {
 
       <main className="flex-1 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
         {/* Back Link */}
-        <Link
-          to="/events"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Events Catalog
-        </Link>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Link
+            to="/events"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Events Catalog
+          </Link>
+
+          {(role === 'organizer' || role === 'admin') && (
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/organizer/events/${event._id || event.id}`}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
+              >
+                Attendees Roster
+              </Link>
+              <Link
+                to={`/organizer/events/${event._id || event.id}/submissions`}
+                className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition flex items-center gap-1.5 shadow-xs"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span>Submissions Tab</span>
+              </Link>
+            </div>
+          )}
+        </div>
 
         {/* Hero Banner Card */}
         <div className="relative h-64 sm:h-96 w-full overflow-hidden rounded-3xl bg-slate-900 shadow-xl">
