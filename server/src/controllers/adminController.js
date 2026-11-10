@@ -662,6 +662,7 @@ export const createAdminEvent = async (req, res) => {
       tags,
       eligibility,
       prerequisites,
+      allowTeams,
       isTeamEvent,
       teamSizeMin,
       teamSizeMax,
@@ -712,17 +713,18 @@ export const createAdminEvent = async (req, res) => {
     const adminId = currentAdmin.id || currentAdmin._id;
     const newId = crypto.randomUUID();
     const finalBanner = bannerImage || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=1200';
+    const teamAllowed = allowTeams !== undefined ? Boolean(allowTeams) : Boolean(isTeamEvent);
 
     const insertRes = await query(
       `INSERT INTO events (
         id, title, description, category, banner_image, event_date, start_time, end_time,
         venue, venue_type, meeting_url, creator_id, organizer_name, organizer_email,
         department, max_capacity, registered_count, registration_deadline, is_paid,
-        ticket_price, status, tags, eligibility, prerequisites, is_team_event,
+        ticket_price, status, tags, eligibility, prerequisites, is_team_event, allow_teams,
         team_size_min, team_size_max, created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-        $15, $16, 0, $17, $18, $19, 'approved', $20, $21, $22, $23, $24, $25, NOW(), NOW()
+        $15, $16, 0, $17, $18, $19, 'approved', $20, $21, $22, $23, $24, $25, $26, NOW(), NOW()
       ) RETURNING *`,
       [
         newId,
@@ -747,7 +749,8 @@ export const createAdminEvent = async (req, res) => {
         JSON.stringify(Array.isArray(tags) ? tags : []),
         eligibility || 'Open to all enrolled university students',
         prerequisites || 'None',
-        !!isTeamEvent,
+        teamAllowed,
+        teamAllowed,
         Number(teamSizeMin) || 1,
         Number(teamSizeMax) || 4,
       ]
@@ -806,6 +809,12 @@ export const updateAdminEvent = async (req, res) => {
       tags,
       eligibility,
       prerequisites,
+      allowTeams,
+      isTeamEvent,
+      teamSizeMin,
+      teamSizeMax,
+      teamMinSize,
+      teamMaxSize,
     } = req.body;
 
     const checkRes = await query('SELECT * FROM events WHERE id = $1', [eventId]);
@@ -861,6 +870,10 @@ export const updateAdminEvent = async (req, res) => {
     const currentAdmin = req.user;
     const adminId = currentAdmin.id || currentAdmin._id;
 
+    const updatedTeamAllowed = allowTeams !== undefined ? Boolean(allowTeams) : (isTeamEvent !== undefined ? Boolean(isTeamEvent) : null);
+    const updatedMin = teamSizeMin !== undefined ? Number(teamSizeMin) : (teamMinSize !== undefined ? Number(teamMinSize) : null);
+    const updatedMax = teamSizeMax !== undefined ? Number(teamSizeMax) : (teamMaxSize !== undefined ? Number(teamMaxSize) : null);
+
     const updateRes = await query(
       `UPDATE events SET
         title = COALESCE($1, title),
@@ -881,8 +894,12 @@ export const updateAdminEvent = async (req, res) => {
         tags = COALESCE($16, tags),
         eligibility = COALESCE($17, eligibility),
         prerequisites = COALESCE($18, prerequisites),
+        allow_teams = COALESCE($19, allow_teams),
+        is_team_event = COALESCE($19, is_team_event),
+        team_size_min = COALESCE($20, team_size_min),
+        team_size_max = COALESCE($21, team_size_max),
         updated_at = NOW()
-       WHERE id = $19
+       WHERE id = $22
        RETURNING *`,
       [
         title ? title.trim() : null,
@@ -903,6 +920,9 @@ export const updateAdminEvent = async (req, res) => {
         tags ? JSON.stringify(tags) : null,
         eligibility || null,
         prerequisites || null,
+        updatedTeamAllowed,
+        updatedMin,
+        updatedMax,
         eventId,
       ]
     );

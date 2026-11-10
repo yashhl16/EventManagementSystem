@@ -454,10 +454,10 @@ export const EditEventPage: React.FC = () => {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Enable Team-Based Competition / Hackathon Mode
+                Enable Team-Based Event / Hackathon
               </h2>
               <p className="text-xs text-slate-400">
-                Allow participants to form, invite, and register as teams (e.g. hackathons, robowars). If unchecked, registrations are strictly individual (default for workshops and seminars).
+                Check this if participants should form teams. Leave unchecked for individual workshops or seminars.
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">

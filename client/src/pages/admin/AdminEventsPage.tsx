@@ -96,6 +96,10 @@ export const AdminEventsPage: React.FC = () => {
     isPaid: false,
     ticketPrice: 0,
     department: 'Campus Administration',
+    allowTeams: false,
+    isTeamEvent: false,
+    teamSizeMin: 2,
+    teamSizeMax: 4,
     certificateTemplateUrl: '',
     certificateTemplateConfig: null as CertificateTemplateConfig | null,
   });
@@ -172,6 +176,10 @@ export const AdminEventsPage: React.FC = () => {
       isPaid: false,
       ticketPrice: 0,
       department: 'Campus Administration',
+      allowTeams: false,
+      isTeamEvent: false,
+      teamSizeMin: 2,
+      teamSizeMax: 4,
       certificateTemplateUrl: '',
       certificateTemplateConfig: null,
     });
@@ -198,6 +206,10 @@ export const AdminEventsPage: React.FC = () => {
       isPaid: !!evt.isPaid,
       ticketPrice: evt.ticketPrice || 0,
       department: evt.department || 'Campus Administration',
+      allowTeams: Boolean(evt.allowTeams !== undefined ? evt.allowTeams : evt.isTeamEvent),
+      isTeamEvent: Boolean(evt.allowTeams !== undefined ? evt.allowTeams : evt.isTeamEvent),
+      teamSizeMin: evt.teamMinSize || (evt as any).teamSizeMin || (evt as any).teamSize?.min || 2,
+      teamSizeMax: evt.teamMaxSize || (evt as any).teamSizeMax || evt.maxTeamSize || (evt as any).teamSize?.max || 4,
       certificateTemplateUrl: evt.certificateTemplateUrl || '',
       certificateTemplateConfig: evt.certificateTemplateConfig || null,
     });
@@ -953,6 +965,64 @@ export const AdminEventsPage: React.FC = () => {
                     className="w-full rounded-xl border border-slate-200 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   />
                 </div>
+              </div>
+
+              {/* Team Formation Settings */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-slate-900 dark:text-white block cursor-pointer">
+                      Enable Team-Based Event / Hackathon
+                    </label>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Check this if participants should form teams. Leave unchecked for individual workshops or seminars.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowTeams || formData.isTeamEvent}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          allowTeams: e.target.checked,
+                          isTeamEvent: e.target.checked,
+                        })
+                      }
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                {(formData.allowTeams || formData.isTeamEvent) && (
+                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div>
+                      <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
+                        Min Team Members
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={formData.teamSizeMin}
+                        onChange={(e) => setFormData({ ...formData, teamSizeMin: Number(e.target.value) })}
+                        className="w-full rounded-xl border border-slate-200 p-2 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
+                        Max Team Members
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={formData.teamSizeMax}
+                        onChange={(e) => setFormData({ ...formData, teamSizeMax: Number(e.target.value) })}
+                        className="w-full rounded-xl border border-slate-200 p-2 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Certificate Template Customization */}

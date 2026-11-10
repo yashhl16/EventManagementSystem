@@ -2729,6 +2729,60 @@ async function runTests() {
       'Test Case 42f: Solo participant registers individually for team-enabled hackathon with immediate QR entry pass'
     );
 
+    // 42g: Admin creates event with allowTeams: true via POST /api/admin/events
+    const tc42_adminCreateRes = await fetch(`${BASE_URL}/admin/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Statewide Inter-University Hackathon 2026',
+        description: 'Elite university coding and hackathon challenge.',
+        category: 'Hackathons',
+        eventDate: '2026-11-30',
+        startTime: '08:00',
+        endTime: '20:00',
+        venue: 'Engineering Hall Alpha',
+        maxCapacity: 100,
+        registrationDeadline: '2026-11-29',
+        allowTeams: true,
+        teamSizeMin: 2,
+        teamSizeMax: 4,
+      }),
+    });
+    const tc42_adminCreateData = await tc42_adminCreateRes.json();
+    const adminEventId = tc42_adminCreateData.event?.id || tc42_adminCreateData.event?._id;
+
+    assert(
+      tc42_adminCreateRes.status === 201 &&
+        tc42_adminCreateData.success &&
+        tc42_adminCreateData.event?.allowTeams === true &&
+        tc42_adminCreateData.event?.isTeamEvent === true,
+      'Test Case 42g: Admin creates event via POST /api/admin/events with allowTeams: true'
+    );
+
+    // 42h: Organizer updates event via PUT /api/events/:id to toggle allowTeams: false
+    const tc42_updateRes = await fetch(`${BASE_URL}/events/${hackId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        allowTeams: false,
+        isTeamEvent: false,
+      }),
+    });
+    const tc42_updateData = await tc42_updateRes.json();
+    assert(
+      tc42_updateRes.status === 200 &&
+        tc42_updateData.success &&
+        tc42_updateData.event?.allowTeams === false &&
+        tc42_updateData.event?.isTeamEvent === false,
+      'Test Case 42h: Organizer updates event via PUT /api/events/:id to toggle allowTeams: false'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);
