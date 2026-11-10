@@ -38,8 +38,7 @@ export const getEventLFTPosts = async (req, res) => {
       myPost = posts.find((p) => p.userId === currentUserId) || null;
 
       const teamRes = await query(
-        `SELECT t.*,
-                (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) as member_count
+        `SELECT t.*
          FROM teams t
          JOIN team_members tm ON tm.team_id = t.id
          WHERE t.event_id = $1 AND tm.user_id = $2
@@ -49,12 +48,16 @@ export const getEventLFTPosts = async (req, res) => {
 
       if (teamRes.rows.length > 0) {
         const row = teamRes.rows[0];
+        const countRes = await query(
+          `SELECT COUNT(*) as count FROM team_members WHERE team_id = $1`,
+          [row.id]
+        );
         myTeam = {
           id: row.id,
           name: row.name,
           inviteCode: row.invite_code,
           isLeader: row.leader_id === currentUserId,
-          memberCount: Number(row.member_count) || 1,
+          memberCount: Number(countRes.rows[0]?.count) || 1,
         };
       }
     }
@@ -79,7 +82,21 @@ export const createOrUpdateLFTPost = async (req, res) => {
   try {
     const eventId = req.params.eventId || req.params.id || req.body.eventId;
     const userId = req.user.id || req.user._id;
-    const { skills = [], bio = '', contactPreference = 'email' } = req.body;
+    const {
+      skills = [],
+      bio = '',
+      contactInfo = '',
+      contactPreference = 'email',
+      status = 'OPEN',
+    } = req.body;
+
+    // Security & Role constraint: only logged-in students or admins can create LFT listings
+    if (req.user.role !== 'student' && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only registered students can publish Looking For Team (LFT) requests.',
+      });
+    }
 
     if (!eventId) {
       return res.status(400).json({ success: false, message: 'Event ID is required.' });
@@ -91,7 +108,7 @@ export const createOrUpdateLFTPost = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
-    // Validate Skills (must be array, max 10 items)
+    // Validate Skills (must be array or comma-separated string, max 10 items)
     let cleanSkills = [];
     if (Array.isArray(skills)) {
       cleanSkills = skills
@@ -121,20 +138,34 @@ export const createOrUpdateLFTPost = async (req, res) => {
       return res.status(400).json({ success: false, message: contactCheck.message });
     }
 
+    // Format Contact Info
+    const cleanContactInfo = String(contactInfo || req.user.phone || req.user.email || '').trim().slice(0, 255);
+    const postStatus = String(status || 'OPEN').toUpperCase() === 'MATCHED' ? 'MATCHED' : 'OPEN';
+
     const postId = crypto.randomUUID();
 
     const upsertRes = await query(
-      `INSERT INTO lft_posts (id, user_id, event_id, skills, bio, contact_preference, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'open')
+      `INSERT INTO lft_posts (id, user_id, event_id, skills, bio, contact_preference, contact_info, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (user_id, event_id)
        DO UPDATE SET
          skills = EXCLUDED.skills,
          bio = EXCLUDED.bio,
          contact_preference = EXCLUDED.contact_preference,
-         status = 'open',
+         contact_info = EXCLUDED.contact_info,
+         status = EXCLUDED.status,
          updated_at = NOW()
        RETURNING *`,
-      [postId, userId, eventId, JSON.stringify(cleanSkills), bioCheck.value, contactCheck.value || 'email']
+      [
+        postId,
+        userId,
+        eventId,
+        JSON.stringify(cleanSkills),
+        bioCheck.value,
+        contactCheck.value || 'email',
+        cleanContactInfo,
+        postStatus,
+      ]
     );
 
     const saved = upsertRes.rows[0];
@@ -161,13 +192,28 @@ export const createOrUpdateLFTPost = async (req, res) => {
 };
 
 /**
- * Delete LFT Post
+ * Delete or Archive LFT Post
  */
 export const deleteLFTPost = async (req, res) => {
   try {
     const eventId = req.params.eventId || req.params.id || req.query.eventId;
     const userId = req.user.id || req.user._id;
     const lftId = req.params.lftId || req.params.postId;
+    const action = req.body?.action || req.query?.action;
+
+    if (action === 'matched' || action === 'match') {
+      const updateRes = await query(
+        `UPDATE lft_posts SET status = 'MATCHED', updated_at = NOW() WHERE event_id = $1 AND user_id = $2 RETURNING *`,
+        [eventId, userId]
+      );
+      if (updateRes.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'LFT post not found.' });
+      }
+      return res.status(200).json({
+        success: true,
+        message: 'Status updated to MATCHED! Congratulations on finding your team.',
+      });
+    }
 
     let deleteRes;
     if (lftId) {

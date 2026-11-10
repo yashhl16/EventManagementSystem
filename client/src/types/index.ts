@@ -308,15 +308,18 @@ export interface LFTPost {
   eventId: string;
   skills: string[];
   bio?: string;
+  contactInfo?: string;
   contactPreference?: string;
-  status: 'open' | 'matched' | 'closed';
+  status: 'OPEN' | 'MATCHED' | 'open' | 'matched' | string;
   createdAt: string;
   updatedAt?: string;
   user?: Partial<User>;
   userName?: string;
+  candidateName?: string;
   userAvatar?: string;
   userDepartment?: string;
   userEmail?: string;
+  userPhone?: string;
 }
 
 export interface Team {

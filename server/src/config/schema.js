@@ -192,7 +192,8 @@ CREATE TABLE IF NOT EXISTS lft_posts (
   skills JSONB DEFAULT '[]'::jsonb,
   bio TEXT DEFAULT '',
   contact_preference VARCHAR(100) DEFAULT 'email',
-  status VARCHAR(20) DEFAULT 'open',
+  contact_info VARCHAR(255) DEFAULT '',
+  status VARCHAR(20) DEFAULT 'OPEN',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT unique_lft_user_event UNIQUE (user_id, event_id)

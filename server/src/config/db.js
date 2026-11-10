@@ -316,11 +316,13 @@ export const initSchema = async () => {
         skills JSONB DEFAULT '[]'::jsonb,
         bio TEXT DEFAULT '',
         contact_preference VARCHAR(100) DEFAULT 'email',
-        status VARCHAR(20) DEFAULT 'open',
+        contact_info VARCHAR(255) DEFAULT '',
+        status VARCHAR(20) DEFAULT 'OPEN',
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW(),
         CONSTRAINT unique_lft_user_event UNIQUE (user_id, event_id)
       );`,
+      `ALTER TABLE lft_posts ADD COLUMN IF NOT EXISTS contact_info VARCHAR(255) DEFAULT '';`,
       `DROP TABLE IF EXISTS votes CASCADE;`,
       `CREATE INDEX IF NOT EXISTS idx_submissions_round ON submissions(round_id);`,
       `CREATE INDEX IF NOT EXISTS idx_event_rounds_event ON event_rounds(event_id);`,
@@ -862,6 +864,8 @@ export const mapEventRound = (row) => {
 
 export const mapLFTPost = (row) => {
   if (!row) return null;
+  const statusNormalized = (row.status || 'OPEN').toUpperCase();
+  const contactInfoVal = row.contact_info || row.contact_preference || row.user_email || '';
   return {
     id: row.id,
     _id: row.id,
@@ -869,8 +873,9 @@ export const mapLFTPost = (row) => {
     eventId: row.event_id,
     skills: Array.isArray(row.skills) ? row.skills : (typeof row.skills === 'string' ? JSON.parse(row.skills) : []),
     bio: row.bio || '',
+    contactInfo: contactInfoVal,
     contactPreference: row.contact_preference || 'email',
-    status: row.status || 'open',
+    status: statusNormalized,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     user: row.user_name ? {

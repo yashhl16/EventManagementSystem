@@ -692,6 +692,20 @@ export const EventDetailsPage: React.FC = () => {
                 )}
               </div>
 
+                {event.isTeamEvent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('lft-hub-section');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 py-2.5 text-xs font-bold hover:bg-purple-100 transition cursor-pointer"
+                  >
+                    <Users className="h-4 w-4" />
+                    <span>Find Teammates (LFT Hub) &darr;</span>
+                  </button>
+                )}
+
               {/* Guarantees */}
               <div className="border-t border-slate-100 pt-4 dark:border-slate-800 text-[11px] text-slate-400 space-y-2">
                 <div className="flex items-center gap-2">

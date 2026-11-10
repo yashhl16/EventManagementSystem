@@ -264,11 +264,20 @@ export const lftService = {
 
   createOrUpdateLFTPost: (
     eventId: string,
-    data: { skills: string[]; bio?: string; contactPreference?: string }
+    data: {
+      skills: string[];
+      bio?: string;
+      contactInfo?: string;
+      contactPreference?: string;
+      status?: string;
+    }
   ) => api.post(`/events/${eventId}/lft`, data),
 
-  deleteLFTPost: (eventId: string, lftId?: string) =>
-    api.delete(`/events/${eventId}/lft${lftId ? `/${lftId}` : ''}`),
+  deleteLFTPost: (eventId: string, lftId?: string, action?: string) =>
+    api.delete(`/events/${eventId}/lft${lftId ? `/${lftId}` : ''}`, {
+      params: action ? { action } : undefined,
+      data: action ? { action } : undefined,
+    }),
 
   inviteLFTParticipant: (eventId: string, lftId: string) =>
     api.post(`/events/${eventId}/lft/${lftId}/invite`),

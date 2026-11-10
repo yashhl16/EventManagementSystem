@@ -2148,6 +2148,61 @@ async function runTests() {
       'Test Case 37h: Direct voting endpoint returns 404 Not Found after feature removal'
     );
 
+    // 37i: Student posts LFT request with comma-separated skills, contactInfo (WhatsApp), and pitch
+    const tc37_lftStudent2Res = await fetch(`${BASE_URL}/events/${tc37_eventId}/lft`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        skills: 'Frontend, React, UI/UX, Python',
+        bio: 'Looking for a hackathon team, experience in Next.js and Tailwind.',
+        contactInfo: '+91 9876543210',
+        contactPreference: 'WhatsApp',
+        status: 'OPEN',
+      }),
+    });
+    const tc37_lftStudent2Data = await tc37_lftStudent2Res.json();
+    assert(
+      (tc37_lftStudent2Res.status === 200 || tc37_lftStudent2Res.status === 201) &&
+        tc37_lftStudent2Data.success &&
+        tc37_lftStudent2Data.post?.contactInfo === '+91 9876543210' &&
+        tc37_lftStudent2Data.post?.skills?.includes('React') &&
+        tc37_lftStudent2Data.post?.status === 'OPEN',
+      'Test Case 37i: Student publishes LFT request with contactInfo, comma-separated skill tags, and OPEN status'
+    );
+
+    // 37j: Student marks their LFT post as MATCHED once a team is formed
+    const tc37_matchRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/lft?action=matched`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${studentToken}`,
+      },
+    });
+    const tc37_matchData = await tc37_matchRes.json();
+    assert(
+      tc37_matchRes.status === 200 &&
+        tc37_matchData.success &&
+        tc37_matchData.message?.includes('MATCHED'),
+      'Test Case 37j: Student successfully updates LFT post status to MATCHED'
+    );
+
+    // 37k: Student removes their LFT post from the directory
+    const tc37_deleteRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/lft`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${studentToken}`,
+      },
+    });
+    const tc37_deleteData = await tc37_deleteRes.json();
+    assert(
+      tc37_deleteRes.status === 200 &&
+        tc37_deleteData.success &&
+        tc37_deleteData.message?.includes('removed'),
+      'Test Case 37k: Student successfully deletes their LFT post via DELETE /api/events/:id/lft'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);
