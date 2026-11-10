@@ -659,7 +659,7 @@ export const AdminEventsPage: React.FC = () => {
                       </td>
 
                       {/* Status */}
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 align-middle whitespace-nowrap">
                         <StatusBadge status={evt.status} />
                       </td>
 
@@ -1141,9 +1141,9 @@ export const AdminEventsPage: React.FC = () => {
                             </span>
                           </td>
 
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3 align-middle whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                              className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
                                 item.attendanceStatus === 'present'
                                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                   : item.attendanceStatus === 'absent'
@@ -1151,9 +1151,9 @@ export const AdminEventsPage: React.FC = () => {
                                   : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                               }`}
                             >
-                              {item.attendanceStatus === 'present' && <UserCheck className="h-3 w-3" />}
-                              {item.attendanceStatus === 'absent' && <UserX className="h-3 w-3" />}
-                              {item.attendanceStatus}
+                              {item.attendanceStatus === 'present' && <UserCheck className="h-3 w-3 shrink-0" />}
+                              {item.attendanceStatus === 'absent' && <UserX className="h-3 w-3 shrink-0" />}
+                              <span className="leading-none">{item.attendanceStatus}</span>
                             </span>
                           </td>
 

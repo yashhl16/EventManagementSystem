@@ -213,7 +213,7 @@ export const OrganizerDashboard: React.FC = () => {
                       </td>
 
                       {/* Status */}
-                      <td className="py-3 px-3 whitespace-nowrap">
+                      <td className="py-3 px-3 align-middle whitespace-nowrap">
                         <StatusBadge status={event.status} />
                         {event.status === 'rejected' && event.rejectionReason && (
                           <p className="mt-1 text-[10px] text-rose-500 max-w-xs truncate">

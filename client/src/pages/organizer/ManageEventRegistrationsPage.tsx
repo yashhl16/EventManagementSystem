@@ -647,29 +647,29 @@ export const ManageEventRegistrationsPage: React.FC = () => {
                       </td>
 
                       {/* Attendance Status Badge (Confirmed / Present / Absent) */}
-                      <td className="py-3.5 px-3.5 whitespace-nowrap">
+                      <td className="py-3.5 px-3.5 whitespace-nowrap align-middle">
                         {isPresent ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                            Present
+                          <span className="inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span className="leading-none">Present</span>
                           </span>
                         ) : isAbsent ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800">
-                            <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
-                            Absent
+                          <span className="inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800">
+                            <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                            <span className="leading-none">Absent</span>
                           </span>
                         ) : isCancelled ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
-                            Cancelled
+                          <span className="inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+                            <span className="leading-none">Cancelled</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800">
-                            <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                            Confirmed
+                          <span className="inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800">
+                            <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                            <span className="leading-none">Confirmed</span>
                           </span>
                         )}
                         {reg.attendedAt && isPresent && (
-                          <p className="text-[10px] text-slate-400 mt-0.5">
+                          <p className="text-[10px] text-slate-400 mt-1 leading-none">
                             Check-in: {new Date(reg.attendedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         )}
