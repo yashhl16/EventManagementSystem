@@ -2455,6 +2455,99 @@ async function runTests() {
       'Test Case 40c: Deliverable update succeeds without roundId via safe query fallback'
     );
 
+    // ==========================================
+    // TEST CASE 41: Organizer & Admin Dedicated Submissions Review Dashboard & Export
+    // ==========================================
+    // 41a: Owner Organizer fetches submissions via GET /api/organizer/events/:id/submissions
+    const tc41_orgSubmissionsRes = await fetch(`${BASE_URL}/organizer/events/${hackathonId}/submissions`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const tc41_orgSubmissionsData = await tc41_orgSubmissionsRes.json();
+    assert(
+      tc41_orgSubmissionsRes.status === 200 &&
+        tc41_orgSubmissionsData.success &&
+        Array.isArray(tc41_orgSubmissionsData.submissions) &&
+        tc41_orgSubmissionsData.submissions.length > 0,
+      'Test Case 41a-1: Owner organizer successfully fetches event submissions via GET /api/organizer/events/:id/submissions'
+    );
+
+    const tc41_firstSub = tc41_orgSubmissionsData.submissions[0];
+    assert(
+      tc41_firstSub &&
+        (tc41_firstSub.fullName || tc41_firstSub.submitterName) &&
+        (tc41_firstSub.email || tc41_firstSub.submitterEmail) &&
+        tc41_firstSub.title &&
+        (tc41_firstSub.fileUrl || tc41_firstSub.documentUrl) &&
+        tc41_firstSub.student &&
+        tc41_firstSub.student.email,
+      'Test Case 41a-2: Submissions review payload includes complete student profile details and deliverable metadata'
+    );
+
+    // 41b: Non-owner organizer receives 403 Forbidden
+    const secondOrgEmail = 'secondary.organizer@college.edu';
+    const secondOrgPass = 'SecondaryOrg@12345';
+    let secondOrgToken;
+    const secondOrgLoginRes = await fetch(`${BASE_URL}/auth/organizer/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: secondOrgEmail, password: secondOrgPass }),
+    });
+    if (secondOrgLoginRes.status === 200) {
+      const secondOrgData = await secondOrgLoginRes.json();
+      secondOrgToken = secondOrgData.token;
+    } else {
+      const secondOrgRegRes = await fetch(`${BASE_URL}/auth/organizer/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Secondary Organizer',
+          email: secondOrgEmail,
+          password: secondOrgPass,
+          organizationName: 'Department of Electrical Engineering',
+          phone: '9812345678',
+        }),
+      });
+      const secondOrgRegData = await secondOrgRegRes.json();
+      secondOrgToken = secondOrgRegData.token;
+    }
+
+    const tc41_unauthorizedRes = await fetch(`${BASE_URL}/organizer/events/${hackathonId}/submissions`, {
+      headers: { Authorization: `Bearer ${secondOrgToken}` },
+    });
+    assert(
+      tc41_unauthorizedRes.status === 403,
+      'Test Case 41b: Non-owner organizer receives 403 Forbidden when accessing submissions of another organizer\'s event'
+    );
+
+    // 41c: Admin has global access to fetch organizer submissions
+    const tc41_adminSubmissionsRes = await fetch(`${BASE_URL}/organizer/events/${hackathonId}/submissions`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    const tc41_adminSubmissionsData = await tc41_adminSubmissionsRes.json();
+    assert(
+      tc41_adminSubmissionsRes.status === 200 &&
+        tc41_adminSubmissionsData.success &&
+        Array.isArray(tc41_adminSubmissionsData.submissions) &&
+        tc41_adminSubmissionsData.submissions.length > 0,
+      'Test Case 41c: Administrator has global access to inspect event deliverables via organizer review endpoint'
+    );
+
+    // 41d: Organizer downloads submissions roster CSV via GET /api/organizer/events/:id/submissions/export-csv
+    const tc41_exportCsvRes = await fetch(`${BASE_URL}/organizer/events/${hackathonId}/submissions/export-csv`, {
+      headers: { Authorization: `Bearer ${organizerToken}` },
+    });
+    const tc41_exportCsvText = await tc41_exportCsvRes.text();
+    const contentTypeHeader = tc41_exportCsvRes.headers.get('content-type') || '';
+    assert(
+      tc41_exportCsvRes.status === 200 &&
+        contentTypeHeader.includes('text/csv') &&
+        tc41_exportCsvText.includes('Submission ID') &&
+        tc41_exportCsvText.includes('Student Name') &&
+        tc41_exportCsvText.includes('Project Title') &&
+        tc41_exportCsvText.includes('File URL'),
+      'Test Case 41d: Organizer exports and downloads submissions CSV roster with deliverable URLs and student attributes'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

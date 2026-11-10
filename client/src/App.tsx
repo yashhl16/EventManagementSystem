@@ -99,6 +99,8 @@ export const App: React.FC = () => {
         <Route path="/organizer/events/:id" element={<ManageEventRegistrationsPage />} />
         <Route path="/organizer/events/:id/roster" element={<ManageEventRegistrationsPage />} />
         <Route path="/organizer/events/:id/registrations" element={<ManageEventRegistrationsPage />} />
+        <Route path="/organizer/events/:id/submissions" element={<ManageEventRegistrationsPage />} />
+        <Route path="/organizer/events/:id/deliverables" element={<ManageEventRegistrationsPage />} />
         <Route path="/organizer/attendance-scanner" element={<QRScanAttendancePage />} />
         <Route path="/organizer/scan" element={<OrganizerScanPassPage />} />
         <Route path="/organizer/announcements" element={<OrganizerAnnouncementsPage />} />
@@ -115,8 +117,11 @@ export const App: React.FC = () => {
       >
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/events" element={<AdminEventsPage />} />
+        <Route path="/admin/events/:id" element={<ManageEventRegistrationsPage />} />
         <Route path="/admin/events/:id/registrations" element={<ManageEventRegistrationsPage />} />
         <Route path="/admin/events/:id/roster" element={<ManageEventRegistrationsPage />} />
+        <Route path="/admin/events/:id/submissions" element={<ManageEventRegistrationsPage />} />
+        <Route path="/admin/events/:id/deliverables" element={<ManageEventRegistrationsPage />} />
         <Route path="/admin/approvals" element={<AdminEventApprovalsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />

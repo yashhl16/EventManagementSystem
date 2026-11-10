@@ -548,8 +548,10 @@ export const getEventSubmissions = async (req, res) => {
     try {
       subsRes = await query(
         `SELECT s.*, t.name as team_name, t.invite_code,
-                u.name as submitter_name, u.email as submitter_email,
-                er.round_number, er.title as round_title
+                u.id as student_user_id, u.name as user_name, u.email as user_email,
+                u.student_id as user_student_id, u.department as user_department,
+                u.avatar as user_avatar, u.phone as user_phone,
+                er.round_number, er.title as round_title, er.status as round_status
          FROM submissions s
          LEFT JOIN teams t ON s.team_id = t.id
          LEFT JOIN users u ON s.user_id = u.id
@@ -562,7 +564,9 @@ export const getEventSubmissions = async (req, res) => {
       if (queryErr.message && queryErr.message.includes('round_id')) {
         subsRes = await query(
           `SELECT s.*, t.name as team_name, t.invite_code,
-                  u.name as submitter_name, u.email as submitter_email
+                  u.id as student_user_id, u.name as user_name, u.email as user_email,
+                  u.student_id as user_student_id, u.department as user_department,
+                  u.avatar as user_avatar, u.phone as user_phone
            FROM submissions s
            LEFT JOIN teams t ON s.team_id = t.id
            LEFT JOIN users u ON s.user_id = u.id
@@ -575,7 +579,37 @@ export const getEventSubmissions = async (req, res) => {
       }
     }
 
-    const submissions = subsRes.rows.map(mapSubmission);
+    const submissions = subsRes.rows.map((row) => {
+      const mapped = mapSubmission(row);
+      const fullName = row.user_name || mapped.submitterName || 'Participant';
+      const rollNumber = row.user_student_id || '';
+      const department = row.user_department || 'General';
+      const email = row.user_email || mapped.submitterEmail || '';
+      const avatar = row.user_avatar || '';
+      const phone = row.user_phone || '';
+
+      return {
+        ...mapped,
+        fullName,
+        rollNumber,
+        studentId: rollNumber,
+        department,
+        email,
+        avatar,
+        phone,
+        student: {
+          id: row.student_user_id || row.user_id,
+          fullName,
+          name: fullName,
+          rollNumber,
+          studentId: rollNumber,
+          department,
+          email,
+          avatar,
+          phone,
+        },
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -588,6 +622,297 @@ export const getEventSubmissions = async (req, res) => {
       success: false,
       message: error.message || 'Failed to retrieve event submissions.',
       error: error.message || 'Failed to retrieve event submissions.',
+    });
+  }
+};
+
+/**
+ * Dedicated Organizer Submissions Review Endpoint
+ * GET /api/organizer/events/:id/submissions
+ * Strictly verifies owner organizer or admin RBAC
+ */
+export const getOrganizerEventSubmissions = async (req, res) => {
+  try {
+    const eventId = req.params.id || req.params.eventId || req.query.eventId;
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event ID is required.',
+        error: 'Event ID is required.',
+      });
+    }
+
+    // 1. Verify Event Exists
+    const eventRes = await query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found.',
+        error: 'Event not found.',
+      });
+    }
+
+    const rawEvent = eventRes.rows[0];
+
+    // 2. Role-Based Access Control (RBAC)
+    const currentUser = req.user;
+    const isSuperAdmin = currentUser && currentUser.role === 'admin';
+    const isOwnerOrganizer =
+      currentUser &&
+      (String(rawEvent.creator_id) === String(currentUser.id || currentUser._id) ||
+        String(rawEvent.organizer_id) === String(currentUser.id || currentUser._id) ||
+        (rawEvent.organizer_email && rawEvent.organizer_email === currentUser.email));
+
+    if (!isSuperAdmin && !isOwnerOrganizer) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You are not authorized to view submissions for this event.',
+        error: 'Access denied: You are not authorized to view submissions for this event.',
+      });
+    }
+
+    await ensureRoundIdColumn();
+
+    // 3. Query Submissions joined with Users, Teams, and Event Rounds
+    let subsRes;
+    try {
+      subsRes = await query(
+        `SELECT s.*,
+                t.name as team_name, t.invite_code as team_invite_code,
+                u.id as student_user_id, u.name as user_name, u.email as user_email,
+                u.student_id as user_student_id, u.department as user_department,
+                u.avatar as user_avatar, u.phone as user_phone,
+                er.round_number, er.title as round_title, er.status as round_status
+         FROM submissions s
+         LEFT JOIN users u ON s.user_id = u.id
+         LEFT JOIN teams t ON s.team_id = t.id
+         LEFT JOIN event_rounds er ON s.round_id = er.id
+         WHERE s.event_id = $1
+         ORDER BY s.submitted_at DESC`,
+        [eventId]
+      );
+    } catch (queryErr) {
+      if (queryErr.message && queryErr.message.includes('round_id')) {
+        subsRes = await query(
+          `SELECT s.*,
+                  t.name as team_name, t.invite_code as team_invite_code,
+                  u.id as student_user_id, u.name as user_name, u.email as user_email,
+                  u.student_id as user_student_id, u.department as user_department,
+                  u.avatar as user_avatar, u.phone as user_phone
+           FROM submissions s
+           LEFT JOIN users u ON s.user_id = u.id
+           LEFT JOIN teams t ON s.team_id = t.id
+           WHERE s.event_id = $1
+           ORDER BY s.submitted_at DESC`,
+          [eventId]
+        );
+      } else {
+        throw queryErr;
+      }
+    }
+
+    const submissions = subsRes.rows.map((row) => {
+      const mapped = mapSubmission(row);
+      const fullName = row.user_name || mapped.submitterName || 'Participant';
+      const rollNumber = row.user_student_id || '';
+      const department = row.user_department || 'General';
+      const email = row.user_email || mapped.submitterEmail || '';
+      const avatar = row.user_avatar || '';
+      const phone = row.user_phone || '';
+
+      return {
+        ...mapped,
+        fullName,
+        rollNumber,
+        studentId: rollNumber,
+        department,
+        email,
+        avatar,
+        phone,
+        student: {
+          id: row.student_user_id || row.user_id,
+          fullName,
+          name: fullName,
+          rollNumber,
+          studentId: rollNumber,
+          department,
+          email,
+          avatar,
+          phone,
+        },
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: submissions.length,
+      totalSubmissions: submissions.length,
+      submissions,
+      event: {
+        id: rawEvent.id,
+        title: rawEvent.title,
+        category: rawEvent.category,
+        isTeamEvent: rawEvent.is_team_event,
+      },
+    });
+  } catch (error) {
+    console.error('Organizer submissions error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to retrieve organizer event submissions.',
+      error: error.message || 'Failed to retrieve organizer event submissions.',
+    });
+  }
+};
+
+/**
+ * Export Event Deliverables/Submissions to CSV
+ * GET /api/organizer/events/:id/submissions/export-csv
+ */
+export const exportSubmissionsCSV = async (req, res) => {
+  try {
+    const eventId = req.params.id || req.params.eventId || req.query.eventId;
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event ID is required.',
+      });
+    }
+
+    // 1. Verify Event Exists
+    const eventRes = await query('SELECT * FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found.',
+      });
+    }
+
+    const rawEvent = eventRes.rows[0];
+
+    // 2. Role-Based Access Control (RBAC)
+    const currentUser = req.user;
+    const isSuperAdmin = currentUser && currentUser.role === 'admin';
+    const isOwnerOrganizer =
+      currentUser &&
+      (String(rawEvent.creator_id) === String(currentUser.id || currentUser._id) ||
+        String(rawEvent.organizer_id) === String(currentUser.id || currentUser._id) ||
+        (rawEvent.organizer_email && rawEvent.organizer_email === currentUser.email));
+
+    if (!isSuperAdmin && !isOwnerOrganizer) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You are not authorized to export submissions for this event.',
+      });
+    }
+
+    await ensureRoundIdColumn();
+
+    // 3. Query Submissions
+    let subsRes;
+    try {
+      subsRes = await query(
+        `SELECT s.*,
+                t.name as team_name,
+                u.name as user_name, u.email as user_email,
+                u.student_id as user_student_id, u.department as user_department,
+                er.round_number, er.title as round_title
+         FROM submissions s
+         LEFT JOIN users u ON s.user_id = u.id
+         LEFT JOIN teams t ON s.team_id = t.id
+         LEFT JOIN event_rounds er ON s.round_id = er.id
+         WHERE s.event_id = $1
+         ORDER BY s.submitted_at DESC`,
+        [eventId]
+      );
+    } catch (queryErr) {
+      if (queryErr.message && queryErr.message.includes('round_id')) {
+        subsRes = await query(
+          `SELECT s.*,
+                  t.name as team_name,
+                  u.name as user_name, u.email as user_email,
+                  u.student_id as user_student_id, u.department as user_department
+           FROM submissions s
+           LEFT JOIN users u ON s.user_id = u.id
+           LEFT JOIN teams t ON s.team_id = t.id
+           WHERE s.event_id = $1
+           ORDER BY s.submitted_at DESC`,
+          [eventId]
+        );
+      } else {
+        throw queryErr;
+      }
+    }
+
+    const headers = [
+      'Submission ID',
+      'Event Title',
+      'Team Name',
+      'Student Name',
+      'Roll Number',
+      'Department',
+      'Email',
+      'Stage / Round',
+      'Project Title',
+      'Description',
+      'File Name',
+      'File URL',
+      'GitHub Repository',
+      'Figma Prototype',
+      'Submitted At',
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const csvRows = [headers.join(',')];
+
+    for (const row of subsRes.rows) {
+      const stageRound = row.round_title
+        ? `Round ${row.round_number || ''}: ${row.round_title}`
+        : 'General';
+      const fileUrl = row.file_url || row.document_url || '';
+
+      const line = [
+        escapeCsv(row.id),
+        escapeCsv(rawEvent.title),
+        escapeCsv(row.team_name || 'Individual'),
+        escapeCsv(row.user_name || ''),
+        escapeCsv(row.user_student_id || ''),
+        escapeCsv(row.user_department || ''),
+        escapeCsv(row.user_email || ''),
+        escapeCsv(stageRound),
+        escapeCsv(row.title || ''),
+        escapeCsv(row.description || ''),
+        escapeCsv(row.file_name || ''),
+        escapeCsv(fileUrl),
+        escapeCsv(row.github_url || ''),
+        escapeCsv(row.figma_url || ''),
+        escapeCsv(row.submitted_at ? new Date(row.submitted_at).toISOString() : ''),
+      ];
+      csvRows.push(line.join(','));
+    }
+
+    const csvContent = csvRows.join('\r\n');
+    const sanitizedTitle = (rawEvent.title || 'event')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .toLowerCase()
+      .slice(0, 30);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${sanitizedTitle}_submissions.csv"`
+    );
+    return res.status(200).send(csvContent);
+  } catch (error) {
+    console.error('Export submissions CSV error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to export submissions to CSV.',
     });
   }
 };

@@ -280,7 +280,7 @@ export interface EventRound {
 export interface Submission {
   id: string;
   _id?: string;
-  teamId?: string;
+  teamId?: string | null;
   eventId: string;
   userId?: string;
   roundId?: string | null;
@@ -296,9 +296,19 @@ export interface Submission {
   githubUrl?: string;
   figmaUrl?: string;
   submittedAt: string;
+  createdAt?: string;
   updatedAt?: string;
-  teamName?: string;
+  teamName?: string | null;
   submitterName?: string;
+  submitterEmail?: string;
+  fullName?: string;
+  rollNumber?: string;
+  studentId?: string;
+  department?: string;
+  email?: string;
+  avatar?: string;
+  phone?: string;
+  student?: Partial<User>;
   members?: Array<{ name: string; avatar?: string; role: string }>;
 }
 
