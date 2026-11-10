@@ -268,6 +268,18 @@ export const initSchema = async () => {
         joined_at TIMESTAMPTZ DEFAULT NOW(),
         CONSTRAINT unique_team_user UNIQUE (team_id, user_id)
       );`,
+      `CREATE TABLE IF NOT EXISTS event_rounds (
+        id VARCHAR(36) PRIMARY KEY,
+        event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        round_number INT NOT NULL,
+        title VARCHAR(150) NOT NULL,
+        description TEXT DEFAULT '',
+        deadline TIMESTAMPTZ,
+        status VARCHAR(20) NOT NULL CHECK (status IN ('upcoming', 'active', 'completed')) DEFAULT 'upcoming',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        CONSTRAINT unique_event_round_number UNIQUE (event_id, round_number)
+      );`,
       `CREATE TABLE IF NOT EXISTS submissions (
         id VARCHAR(36) PRIMARY KEY,
         team_id VARCHAR(36) REFERENCES teams(id) ON DELETE CASCADE,
@@ -286,10 +298,13 @@ export const initSchema = async () => {
         submitted_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );`,
+      `ALTER TABLE submissions ADD COLUMN IF NOT EXISTS round_id VARCHAR(36) DEFAULT NULL;`,
+      `ALTER TABLE submissions ALTER COLUMN round_id DROP NOT NULL;`,
       `ALTER TABLE submissions ALTER COLUMN file_type TYPE VARCHAR(255);`,
       `ALTER TABLE submissions ALTER COLUMN file_url DROP NOT NULL;`,
       `ALTER TABLE submissions ADD COLUMN IF NOT EXISTS document_url TEXT DEFAULT '';`,
       `ALTER TABLE submissions ALTER COLUMN description DROP NOT NULL;`,
+      `CREATE INDEX IF NOT EXISTS idx_submissions_round ON submissions(round_id);`,
       `CREATE INDEX IF NOT EXISTS idx_teams_event ON teams(event_id);`,
       `CREATE INDEX IF NOT EXISTS idx_teams_leader ON teams(leader_id);`,
       `CREATE INDEX IF NOT EXISTS idx_teams_code ON teams(invite_code);`,
@@ -302,19 +317,6 @@ export const initSchema = async () => {
       `UPDATE certificates SET certificate_number = certificate_code WHERE certificate_number IS NULL OR certificate_number = '';`,
       `CREATE INDEX IF NOT EXISTS idx_certificates_number ON certificates(certificate_number);`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_certificates_student_event ON certificates(student_id, event_id);`,
-      `CREATE TABLE IF NOT EXISTS event_rounds (
-        id VARCHAR(36) PRIMARY KEY,
-        event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-        round_number INT NOT NULL,
-        title VARCHAR(150) NOT NULL,
-        description TEXT DEFAULT '',
-        deadline TIMESTAMPTZ,
-        status VARCHAR(20) NOT NULL CHECK (status IN ('upcoming', 'active', 'completed')) DEFAULT 'upcoming',
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW(),
-        CONSTRAINT unique_event_round_number UNIQUE (event_id, round_number)
-      );`,
-      `ALTER TABLE submissions ADD COLUMN IF NOT EXISTS round_id VARCHAR(36) DEFAULT NULL;`,
       `CREATE TABLE IF NOT EXISTS lft_posts (
         id VARCHAR(36) PRIMARY KEY,
         user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,

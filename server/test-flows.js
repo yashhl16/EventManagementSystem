@@ -2314,6 +2314,78 @@ async function runTests() {
       'Test Case 38e: Deliverable GET endpoints return submission details with documentUrl and fileUrl aliases'
     );
 
+    // TEST CASE 39: Submissions round_id Column & Optional Relation Alignment
+    // 39a: Submit deliverable with roundId: null or omitted (single-round / no-round events)
+    const tc39_nullRoundRes = await fetch(`${BASE_URL}/events/${hackathonId}/deliverables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Neural Vision Core Architecture Overview',
+        description: 'Submission for event without multi-round stages where roundId is omitted.',
+        fileName: 'core_architecture.pdf',
+        fileType: 'application/pdf',
+        fileUrl: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+        roundId: null, // Explicitly null
+      }),
+    });
+    const tc39_nullRoundData = await tc39_nullRoundRes.json();
+    assert(
+      (tc39_nullRoundRes.status === 200 || tc39_nullRoundRes.status === 201) &&
+        tc39_nullRoundData.success &&
+        tc39_nullRoundData.submission?.roundId === null,
+      'Test Case 39a: Submission succeeds with roundId: null without database constraint errors'
+    );
+
+    // 39b: Submit deliverable with roundId as empty string ("") safely coerced to null
+    const tc39_emptyRoundRes = await fetch(`${BASE_URL}/events/${hackathonId}/deliverables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Neural Vision Updated Specs',
+        description: 'Testing empty string roundId coercion to prevent UUID syntax errors.',
+        fileName: 'updated_specs.pdf',
+        fileType: 'application/pdf',
+        fileUrl: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+        roundId: '   ', // Whitespace string
+      }),
+    });
+    const tc39_emptyRoundData = await tc39_emptyRoundRes.json();
+    assert(
+      (tc39_emptyRoundRes.status === 200 || tc39_emptyRoundRes.status === 201) &&
+        tc39_emptyRoundData.success,
+      'Test Case 39b: Submission with empty string roundId safely coerces to null'
+    );
+
+    // 39c: Submit deliverable linking to valid roundId in multi-round competition
+    const tc39_validRoundRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/deliverables`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Autonomous Vision Stage 1 Milestone Report',
+        description: 'Detailed stage 1 report correctly linked to active competition stage.',
+        fileName: 'stage_1_milestone_report.pdf',
+        fileType: 'application/pdf',
+        fileUrl: 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+        roundId: tc37_round1Id,
+      }),
+    });
+    const tc39_validRoundData = await tc39_validRoundRes.json();
+    assert(
+      (tc39_validRoundRes.status === 200 || tc39_validRoundRes.status === 201) &&
+        tc39_validRoundData.success &&
+        tc39_validRoundData.submission?.roundId === tc37_round1Id,
+      'Test Case 39c: Submission successfully preserves and maps roundId relation with event_rounds'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

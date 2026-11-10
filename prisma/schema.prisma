@@ -1,0 +1,182 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                      String              @id @default(uuid())
+  name                    String
+  email                   String              @unique
+  password                String
+  role                    String              @default("student")
+  studentId               String?
+  department              String?
+  phone                   String?
+  avatar                  String?
+  organizationName        String?
+  designatingOfficeTitle  String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  submissions             Submission[]
+  registrations           EventRegistration[]
+  attendances             Attendance[]
+  certificates            Certificate[]
+  lftPosts                LFTPost[]
+  ledTeams                Team[]              @relation("TeamLeader")
+  teamMembers             TeamMember[]
+}
+
+model Event {
+  id                        String              @id @default(uuid())
+  title                     String
+  description               String?
+  venue                     String?
+  category                  String?
+  date                      DateTime?
+  startTime                 String?
+  endTime                   String?
+  capacity                  Int?
+  bannerUrl                 String?
+  status                    String              @default("upcoming")
+  isTeamEvent               Boolean             @default(false)
+  maxTeamSize               Int                 @default(4)
+  teamSizeMin               Int                 @default(1)
+  teamSizeMax               Int                 @default(4)
+  certificateTemplateUrl    String?
+  certificateTemplateConfig Json?
+  organizerId               String?
+  organizerEmail            String?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  submissions               Submission[]
+  rounds                    EventRound[]
+  registrations             EventRegistration[]
+  attendances               Attendance[]
+  certificates              Certificate[]
+  teams                     Team[]
+  lftPosts                  LFTPost[]
+}
+
+model EventRound {
+  id          String       @id @default(uuid())
+  eventId     String
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  roundNumber Int
+  title       String
+  description String?
+  deadline    DateTime?
+  status      String       @default("upcoming")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  submissions Submission[]
+
+  @@unique([eventId, roundNumber])
+}
+
+model Submission {
+  id           String      @id @default(uuid())
+  eventId      String
+  event        Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  roundId      String?     // Make optional to prevent errors if rounds aren't used
+  round        EventRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId       String?
+  team         Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  fileUrl      String?
+  documentUrl  String?
+  fileType     String?
+  fileName     String?
+  fileSize     Int?
+  githubUrl    String?
+  figmaUrl     String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now()) @updatedAt
+}
+
+model Team {
+  id          String        @id @default(uuid())
+  name        String
+  leaderId    String
+  leader      User          @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+  eventId     String
+  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  inviteCode  String        @unique
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  members     TeamMember[]
+  submissions Submission[]
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  teamId   String
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("Member")
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+}
+
+model EventRegistration {
+  id         String   @id @default(uuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticketCode String   @unique
+  status     String   @default("registered")
+  teamName   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Attendance {
+  id         String   @id @default(uuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendedAt DateTime @default(now())
+  markedBy   String?
+}
+
+model Certificate {
+  id                String   @id @default(uuid())
+  certificateNumber String   @unique
+  studentId         String
+  student           User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  eventId           String
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  issuedAt          DateTime @default(now())
+  pdfUrl            String?
+
+  @@unique([studentId, eventId])
+}
+
+model LFTPost {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId           String
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  skills            Json?
+  bio               String?
+  contactPreference String?  @default("email")
+  contactInfo       String?
+  status            String?  @default("OPEN")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

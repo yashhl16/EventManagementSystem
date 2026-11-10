@@ -39,7 +39,10 @@ export const submitDeliverable = async (req, res) => {
       round_id = null,
     } = req.body || {};
 
-    const finalRoundId = roundId || round_id || null;
+    const cleanRoundId = (typeof roundId === 'string' && roundId.trim() !== '')
+      ? roundId.trim()
+      : (typeof round_id === 'string' && round_id.trim() !== '' ? round_id.trim() : null);
+    const finalRoundId = cleanRoundId || null;
     const finalFileUrl = fileUrl || file_url || documentUrl || document_url || fileData || '';
     const finalFileName = fileName || file_name || 'deliverable.pdf';
     const finalFileType = (fileType || file_type || 'application/pdf').slice(0, 255);
