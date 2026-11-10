@@ -52,6 +52,37 @@ export const protect = async (req, res, next) => {
 };
 
 /**
+ * Optional authentication middleware
+ * Populates req.user if a valid token is provided, but does not block if unauthenticated.
+ */
+export const optionalAuth = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
+    if (token) {
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'super_secret_college_event_hub_jwt_key_2026_secured'
+      );
+      const userRes = await query('SELECT * FROM users WHERE id = $1', [decoded.id]);
+      if (userRes.rows.length > 0) {
+        const u = mapUser(userRes.rows[0]);
+        if (u.isActive) {
+          req.user = u;
+        }
+      }
+    }
+  } catch (_) {
+    // Continue without setting req.user
+  }
+  next();
+};
+
+/**
  * Enforce specific role
  * e.g. requireRole('admin')
  */

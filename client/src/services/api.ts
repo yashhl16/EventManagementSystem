@@ -247,14 +247,61 @@ export const submissionService = {
       fileSize?: number;
       githubUrl?: string;
       figmaUrl?: string;
+      roundId?: string | null;
     }
   ) => api.post(`/events/${eventId}/submit`, data),
 
-  getMySubmission: (eventId: string) =>
-    api.get(`/events/${eventId}/my-submission`),
+  getMySubmission: (eventId: string, roundId?: string) =>
+    api.get(`/events/${eventId}/my-submission`, { params: { roundId } }),
 
   getEventSubmissions: (eventId: string) =>
     api.get(`/events/${eventId}/submissions`),
+};
+
+/* ================= LFT (LOOKING FOR TEAM) API ================= */
+export const lftService = {
+  getEventLFTPosts: (eventId: string) => api.get(`/events/${eventId}/lft`),
+
+  createOrUpdateLFTPost: (
+    eventId: string,
+    data: { skills: string[]; bio?: string; contactPreference?: string }
+  ) => api.post(`/events/${eventId}/lft`, data),
+
+  deleteLFTPost: (eventId: string, lftId?: string) =>
+    api.delete(`/events/${eventId}/lft${lftId ? `/${lftId}` : ''}`),
+
+  inviteLFTParticipant: (eventId: string, lftId: string) =>
+    api.post(`/events/${eventId}/lft/${lftId}/invite`),
+};
+
+/* ================= MULTI-ROUND EVENT STAGES API ================= */
+export const roundService = {
+  getEventRounds: (eventId: string) => api.get(`/events/${eventId}/rounds`),
+
+  configureEventRounds: (eventId: string, rounds: any[]) =>
+    api.post(`/events/${eventId}/rounds`, { rounds }),
+
+  updateEventRound: (eventId: string, roundId: string, data: any) =>
+    api.put(`/events/${eventId}/rounds/${roundId}`, data),
+
+  deleteEventRound: (eventId: string, roundId: string) =>
+    api.delete(`/events/${eventId}/rounds/${roundId}`),
+};
+
+/* ================= PUBLIC PROJECT SHOWCASE & VOTING API ================= */
+export const showcaseService = {
+  getEventShowcase: (
+    eventId: string,
+    params?: { roundId?: string; search?: string; sortBy?: string }
+  ) => api.get(`/events/${eventId}/showcase`, { params }),
+
+  castVote: (eventId: string, submissionId: string) =>
+    api.post(`/events/${eventId}/vote`, { submissionId }),
+
+  retractVote: (eventId: string) => api.delete(`/events/${eventId}/vote`),
+
+  getEventLeaderboard: (eventId: string) =>
+    api.get(`/events/${eventId}/showcase/leaderboard`),
 };
 
 export default api;

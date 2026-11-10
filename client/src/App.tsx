@@ -11,6 +11,7 @@ import { AdminLayout } from './components/layout/AdminLayout';
 import { LandingPage } from './pages/public/LandingPage';
 import { ExploreEventsPage } from './pages/public/ExploreEventsPage';
 import { EventDetailsPage } from './pages/public/EventDetailsPage';
+import { ProjectShowcasePage } from './pages/public/ProjectShowcasePage';
 import { VerifyCertificatePage } from './pages/public/VerifyCertificatePage';
 import { NotFoundPage } from './pages/public/NotFoundPage';
 
@@ -53,6 +54,8 @@ export const App: React.FC = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/events" element={<ExploreEventsPage />} />
       <Route path="/events/:id" element={<EventDetailsPage />} />
+      <Route path="/events/:id/showcase" element={<ProjectShowcasePage />} />
+      <Route path="/events/:id/gallery" element={<ProjectShowcasePage />} />
       <Route path="/calendar" element={<StudentCalendarPage />} />
       <Route path="/verify-certificate" element={<VerifyCertificatePage />} />
       <Route path="/verify-certificate/:code" element={<VerifyCertificatePage />} />

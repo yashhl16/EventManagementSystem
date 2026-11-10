@@ -82,6 +82,14 @@ export const CreateEventPage: React.FC = () => {
   const [tags, setTags] = useState('Technology, Hackathons, Innovation');
   const [certificateTemplateUrl, setCertificateTemplateUrl] = useState('');
   const [certificateTemplateConfig, setCertificateTemplateConfig] = useState<CertificateTemplateConfig | null>(null);
+  const [enableMultiRounds, setEnableMultiRounds] = useState(false);
+  const [stages, setStages] = useState<
+    Array<{ roundNumber: number; title: string; description: string; deadline: string; status: 'upcoming' | 'active' | 'completed' }>
+  >([
+    { roundNumber: 1, title: 'Round 1: Idea & Synopsis Submission', description: 'Submit proposal presentation (PDF/PPT) and problem statement.', deadline: '', status: 'active' },
+    { roundNumber: 2, title: 'Round 2: Prototype Video & Code Demo', description: 'Submit working prototype, GitHub repo, or demo screencast.', deadline: '', status: 'upcoming' },
+    { roundNumber: 3, title: 'Finale: Grand Jury Live Pitch', description: 'Live presentation and Q&A before jury.', deadline: '', status: 'upcoming' },
+  ]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -208,6 +216,7 @@ export const CreateEventPage: React.FC = () => {
         teamMaxSize: isTeamEvent ? Number(teamMaxSize) : 1,
         certificateTemplateUrl: certificateTemplateUrl ? certificateTemplateUrl.trim() : undefined,
         certificateTemplateConfig: certificateTemplateConfig || undefined,
+        rounds: enableMultiRounds ? stages : undefined,
         tags: tags.split(',').map((t) => t.trim()),
       });
 
@@ -597,6 +606,129 @@ export const CreateEventPage: React.FC = () => {
                   className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800 dark:text-white"
                 />
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Multi-Round Stages & Progression */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Multi-Round Competition Stages
+              </h2>
+              <p className="text-xs text-slate-400">
+                Configure sequential stages (e.g. Round 1: Synopsis &rarr; Round 2: Prototype Video &rarr; Finale: Live Pitch)
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableMultiRounds}
+                onChange={(e) => setEnableMultiRounds(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+
+          {enableMultiRounds && (
+            <div className="space-y-4 pt-2">
+              {stages.map((stg, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/40 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                      STAGE {stg.roundNumber}
+                    </span>
+                    {stages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setStages(stages.filter((_, sIdx) => sIdx !== idx))}
+                        className="text-xs text-rose-500 hover:text-rose-600 font-medium cursor-pointer"
+                      >
+                        Remove Stage
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                        Stage Title
+                      </label>
+                      <input
+                        type="text"
+                        value={stg.title}
+                        onChange={(e) => {
+                          const updated = [...stages];
+                          updated[idx].title = e.target.value;
+                          setStages(updated);
+                        }}
+                        placeholder="e.g. Round 1: Idea Submission"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                        Initial Status
+                      </label>
+                      <select
+                        value={stg.status}
+                        onChange={(e) => {
+                          const updated = [...stages];
+                          updated[idx].status = e.target.value as any;
+                          setStages(updated);
+                        }}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      >
+                        <option value="upcoming">Upcoming</option>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                      Deliverable Instructions & Requirements
+                    </label>
+                    <input
+                      type="text"
+                      value={stg.description}
+                      onChange={(e) => {
+                        const updated = [...stages];
+                        updated[idx].description = e.target.value;
+                        setStages(updated);
+                      }}
+                      placeholder="e.g. Upload PDF/PPT presentation and problem synopsis"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setStages([
+                    ...stages,
+                    {
+                      roundNumber: stages.length + 1,
+                      title: `Round ${stages.length + 1}: Final Stage`,
+                      description: 'Deliverable submission & jury defense',
+                      deadline: '',
+                      status: 'upcoming',
+                    },
+                  ])
+                }
+                className="w-full rounded-xl border border-dashed border-indigo-300 py-2.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950/40 transition cursor-pointer"
+              >
+                + Add Another Competition Stage
+              </button>
             </div>
           )}
         </div>

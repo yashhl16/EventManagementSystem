@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { query, mapEvent } from '../config/db.js';
+import { query, mapEvent, mapEventRound } from '../config/db.js';
 import { validateText, validateUrl, validateEventSchedule } from '../utils/validation.js';
 
 /**
@@ -163,6 +163,18 @@ export const getEventById = async (req, res) => {
     }
 
     const event = mapEvent(eventRes.rows[0]);
+
+    // Attach any configured event rounds
+    try {
+      const roundsRes = await query(
+        `SELECT * FROM event_rounds WHERE event_id = $1 ORDER BY round_number ASC`,
+        [id]
+      );
+      event.rounds = roundsRes.rows.map(mapEventRound);
+    } catch (_) {
+      event.rounds = [];
+    }
+
     res.status(200).json({ success: true, event });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to retrieve event details.' });
@@ -386,6 +398,34 @@ export const createEvent = async (req, res) => {
     );
 
     const event = mapEvent(insertRes.rows[0]);
+    event.rounds = [];
+
+    // If rounds are specified during creation, persist them automatically
+    if (Array.isArray(req.body.rounds) && req.body.rounds.length > 0) {
+      for (let i = 0; i < req.body.rounds.length; i++) {
+        const r = req.body.rounds[i];
+        const roundNum = Number(r.roundNumber || r.round_number || i + 1);
+        const rTitle = (r.title || `Round ${roundNum}`).trim();
+        const rDesc = (r.description || '').trim();
+        const rDeadline = r.deadline || registrationDeadline || null;
+        let rStatus = (r.status || (i === 0 ? 'active' : 'upcoming')).toLowerCase();
+        if (!['upcoming', 'active', 'completed'].includes(rStatus)) rStatus = 'upcoming';
+        const rId = r.id || crypto.randomUUID();
+        try {
+          const insertedRound = await query(
+            `INSERT INTO event_rounds (id, event_id, round_number, title, description, deadline, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (event_id, round_number) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, deadline = EXCLUDED.deadline, status = EXCLUDED.status, updated_at = NOW()
+             RETURNING *`,
+            [rId, event.id, roundNum, rTitle, rDesc, rDeadline, rStatus]
+          );
+          if (insertedRound.rows.length > 0) {
+            event.rounds.push(mapEventRound(insertedRound.rows[0]));
+          }
+        } catch (_) {}
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: status === 'approved'

@@ -296,6 +296,46 @@ export const initSchema = async () => {
       `UPDATE certificates SET certificate_number = certificate_code WHERE certificate_number IS NULL OR certificate_number = '';`,
       `CREATE INDEX IF NOT EXISTS idx_certificates_number ON certificates(certificate_number);`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_certificates_student_event ON certificates(student_id, event_id);`,
+      `CREATE TABLE IF NOT EXISTS event_rounds (
+        id VARCHAR(36) PRIMARY KEY,
+        event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        round_number INT NOT NULL,
+        title VARCHAR(150) NOT NULL,
+        description TEXT DEFAULT '',
+        deadline TIMESTAMPTZ,
+        status VARCHAR(20) NOT NULL CHECK (status IN ('upcoming', 'active', 'completed')) DEFAULT 'upcoming',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        CONSTRAINT unique_event_round_number UNIQUE (event_id, round_number)
+      );`,
+      `ALTER TABLE submissions ADD COLUMN IF NOT EXISTS round_id VARCHAR(36) DEFAULT NULL;`,
+      `CREATE TABLE IF NOT EXISTS lft_posts (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        skills JSONB DEFAULT '[]'::jsonb,
+        bio TEXT DEFAULT '',
+        contact_preference VARCHAR(100) DEFAULT 'email',
+        status VARCHAR(20) DEFAULT 'open',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        CONSTRAINT unique_lft_user_event UNIQUE (user_id, event_id)
+      );`,
+      `CREATE TABLE IF NOT EXISTS votes (
+        id VARCHAR(36) PRIMARY KEY,
+        submission_id VARCHAR(36) NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        event_id VARCHAR(36) NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        CONSTRAINT unique_user_event_vote UNIQUE (user_id, event_id)
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_submissions_round ON submissions(round_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_event_rounds_event ON event_rounds(event_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_lft_posts_event ON lft_posts(event_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_lft_posts_user ON lft_posts(user_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_votes_submission ON votes(submission_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_votes_event ON votes(event_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_votes_user ON votes(user_id);`,
       // Safe targeted purge of legacy seed dummy events on Neon
       `DELETE FROM events WHERE title IN ('AI Horizon 2026: 36-Hour National Hackathon', 'Mastering Cloud-Native Microservices with Kubernetes', 'CyberDefend 2026: Campus Capture The Flag (CTF)', 'RoboWars 2026: Autonomous Combat Arena & Drone Racing', 'Tarang 2026: Annual University Cultural & Musical Odyssey') AND organizer_email = 'organizer@college.edu';`,
       `DELETE FROM announcements WHERE title = 'Hacker Guide & API Keys Released';`,
@@ -795,6 +835,9 @@ export const mapSubmission = (row) => {
     teamId: row.team_id,
     eventId: row.event_id,
     userId: row.user_id,
+    roundId: row.round_id || null,
+    roundNumber: row.round_number ? Number(row.round_number) : null,
+    roundTitle: row.round_title || null,
     title: row.title,
     description: row.description || '',
     fileUrl: row.file_url,
@@ -807,6 +850,70 @@ export const mapSubmission = (row) => {
     updatedAt: row.updated_at,
     teamName: row.team_name,
     submitterName: row.submitter_name,
+    votesCount: Number(row.votes_count) || 0,
+    hasVoted: Boolean(row.has_voted),
+    members: Array.isArray(row.members) ? row.members : (typeof row.members === 'string' ? JSON.parse(row.members) : undefined),
+  };
+};
+
+export const mapEventRound = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: row.id,
+    eventId: row.event_id,
+    roundNumber: Number(row.round_number) || 1,
+    title: row.title,
+    description: row.description || '',
+    deadline: row.deadline ? (row.deadline.toISOString ? row.deadline.toISOString() : String(row.deadline)) : null,
+    status: row.status || 'upcoming',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
+export const mapLFTPost = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: row.id,
+    userId: row.user_id,
+    eventId: row.event_id,
+    skills: Array.isArray(row.skills) ? row.skills : (typeof row.skills === 'string' ? JSON.parse(row.skills) : []),
+    bio: row.bio || '',
+    contactPreference: row.contact_preference || 'email',
+    status: row.status || 'open',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    user: row.user_name ? {
+      id: row.user_id,
+      _id: row.user_id,
+      name: row.user_name,
+      fullName: row.user_name,
+      email: row.user_email,
+      avatar: row.user_avatar || '',
+      department: row.user_department || 'General',
+      studentId: row.user_student_id || '',
+      phone: row.user_phone || '',
+    } : undefined,
+    userName: row.user_name,
+    candidateName: row.user_name,
+    userEmail: row.user_email,
+    candidateEmail: row.user_email,
+    userAvatar: row.user_avatar || '',
+    userDepartment: row.user_department || 'General',
+  };
+};
+
+export const mapVote = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: row.id,
+    submissionId: row.submission_id,
+    userId: row.user_id,
+    eventId: row.event_id,
+    createdAt: row.created_at,
   };
 };
 

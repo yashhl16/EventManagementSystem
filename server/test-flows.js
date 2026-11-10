@@ -1954,6 +1954,242 @@ async function runTests() {
       'Test Case 36f: PATCH /api/user/profile supports partial updates while preserving existing credentials'
     );
 
+    // =========================================================================
+    // TEST CASE 37: ADVANCED TEAM & COMPETITION WORKFLOWS
+    // (LFT MATCHING HUB, MULTI-ROUND EVENT STAGES, & PUBLIC SHOWCASE VOTING)
+    // =========================================================================
+
+    // 37a: Organizer creates a competition event with sequential multi-round stages
+    const tc37_hackathonRes = await fetch(`${BASE_URL}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${organizerToken}`,
+      },
+      body: JSON.stringify({
+        title: 'National AI & Autonomous Robotics Hackathon 2026',
+        description: 'Elite 3-stage hackathon featuring ideation synopsis, prototype video evaluation, and finale live demonstration pitch.',
+        category: 'Technical',
+        eventDate: futureDateIST,
+        startTime: '09:00',
+        endTime: '18:00',
+        venueType: 'hybrid',
+        venue: 'Campus Innovation Center, Hall A',
+        maxCapacity: 120,
+        registrationDeadline: tomorrowIST,
+        isTeamEvent: true,
+        teamMinSize: 2,
+        teamMaxSize: 4,
+        rounds: [
+          {
+            roundNumber: 1,
+            title: 'Round 1: Problem Synopsis & Architecture Spec',
+            description: 'Submit an architectural blueprint document (PDF) and concept overview.',
+            deadline: futureDateIST,
+            status: 'active',
+          },
+          {
+            roundNumber: 2,
+            title: 'Round 2: Working Prototype Demo & Code Review',
+            description: 'Submit working GitHub repository and 3-minute video walkthrough link.',
+            deadline: futureDateIST,
+            status: 'upcoming',
+          },
+          {
+            roundNumber: 3,
+            title: 'Grand Finale: On-Stage Live Pitch & Jury Q&A',
+            description: 'In-person presentation before industry judges and campus voting audience.',
+            deadline: futureDateIST,
+            status: 'upcoming',
+          },
+        ],
+      }),
+    });
+    const tc37_hackathonData = await tc37_hackathonRes.json();
+    assert(
+      tc37_hackathonRes.status === 201 &&
+        tc37_hackathonData.success &&
+        tc37_hackathonData.event?.id &&
+        Array.isArray(tc37_hackathonData.event?.rounds) &&
+        tc37_hackathonData.event?.rounds.length === 3,
+      'Test Case 37a: Organizer creates multi-stage competition event with 3 sequential rounds saved in database'
+    );
+    const tc37_eventId = tc37_hackathonData.event.id;
+    const tc37_round1Id = tc37_hackathonData.event.rounds[0].id;
+    const tc37_round2Id = tc37_hackathonData.event.rounds[1].id;
+
+    // 37b: Public event detail and round routes return stages
+    const tc37_roundsRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/rounds`);
+    const tc37_roundsData = await tc37_roundsRes.json();
+    assert(
+      tc37_roundsRes.status === 200 &&
+        tc37_roundsData.success &&
+        tc37_roundsData.rounds.length === 3 &&
+        tc37_roundsData.rounds[0].roundNumber === 1 &&
+        tc37_roundsData.rounds[0].status === 'active',
+      'Test Case 37b: GET /api/events/:id/rounds retrieves ordered stages with active status'
+    );
+
+    // 37c: Solo participant broadcasts profile on LFT (Looking for Team) matching hub
+    const tc37_lftRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/lft`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${newStudentToken}`,
+      },
+      body: JSON.stringify({
+        skills: ['React', 'TypeScript', 'Node.js', 'PyTorch'],
+        bio: 'Full-stack AI developer with experience building autonomous vision pipelines and clean modern interfaces.',
+        contactPreference: 'email',
+      }),
+    });
+    const tc37_lftData = await tc37_lftRes.json();
+    assert(
+      (tc37_lftRes.status === 200 || tc37_lftRes.status === 201) &&
+        tc37_lftData.success &&
+        tc37_lftData.post?.id &&
+        tc37_lftData.post?.skills?.includes('PyTorch'),
+      'Test Case 37c: Student publishes profile to LFT hub with skill tags and contact preferences'
+    );
+    const tc37_lftPostId = tc37_lftData.post.id;
+
+    // 37d: Roster of LFT candidates fetched via GET /api/events/:id/lft
+    const tc37_lftListRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/lft`);
+    const tc37_lftListData = await tc37_lftListRes.json();
+    assert(
+      tc37_lftListRes.status === 200 &&
+        tc37_lftListData.success &&
+        tc37_lftListData.posts.some(
+          (p) => p.id === tc37_lftPostId && (p.candidateName === 'Elena Rostova' || p.userName === 'Elena Rostova')
+        ),
+      'Test Case 37d: GET /api/events/:id/lft lists available candidates with student name and skill badges'
+    );
+
+    // 37e: Team Leader creates team and sends invite to LFT participant
+    const tc37_createTeamRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/teams`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        name: 'CyberNavigators Team Alpha',
+      }),
+    });
+    const tc37_createTeamData = await tc37_createTeamRes.json();
+    assert(
+      tc37_createTeamRes.status === 201 && tc37_createTeamData.success && tc37_createTeamData.team?.id,
+      'Test Case 37e-1: Team leader creates team CyberNavigators Team Alpha'
+    );
+
+    const tc37_inviteRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/lft/${tc37_lftPostId}/invite`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({}),
+    });
+    const tc37_inviteData = await tc37_inviteRes.json();
+    assert(
+      tc37_inviteRes.status === 200 &&
+        tc37_inviteData.success &&
+        tc37_inviteData.message?.includes('invitation sent'),
+      'Test Case 37e-2: Team leader successfully dispatches join invitation to LFT candidate'
+    );
+
+    // 37f: Team submits project deliverable linked to Round 1
+    const tc37_submitRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({
+        roundId: tc37_round1Id,
+        title: 'Autonomous Vision Guidance System for Drones',
+        description: 'Deep neural network perception pipeline for GPS-denied indoor quadcopter navigation.',
+        demoUrl: 'https://autonomous-drone-demo.campus.edu',
+        githubUrl: 'https://github.com/yashhl16/AutonomousDroneGuidance',
+        figmaUrl: 'https://figma.com/design/drone-telemetry-ui',
+        fileUrl: 'https://campus-pulse-assets.s3.amazonaws.com/submissions/autonomous_vision_report.pdf',
+        fileName: 'autonomous_vision_report.pdf',
+      }),
+    });
+    const tc37_submitData = await tc37_submitRes.json();
+    assert(
+      (tc37_submitRes.status === 200 || tc37_submitRes.status === 201) &&
+        tc37_submitData.success &&
+        tc37_submitData.submission?.roundId === tc37_round1Id &&
+        tc37_submitData.submission?.title === 'Autonomous Vision Guidance System for Drones',
+      'Test Case 37f: Team successfully submits deliverable linked to active Round 1 with GitHub, Demo, & Report'
+    );
+    const tc37_submissionId = tc37_submitData.submission.id;
+
+    // 37g: Public project showcase gallery lists submission with 0 initial votes
+    const tc37_showcaseRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/showcase`);
+    const tc37_showcaseData = await tc37_showcaseRes.json();
+    assert(
+      tc37_showcaseRes.status === 200 &&
+        tc37_showcaseData.success &&
+        tc37_showcaseData.submissions.some(
+          (s) => s.id === tc37_submissionId && s.votesCount === 0 && s.title.includes('Autonomous Vision')
+        ),
+      'Test Case 37g: GET /api/events/:id/showcase serves public project gallery displaying submitted deliverables'
+    );
+
+    // 37h: Student 2 casts People\'s Choice Award vote for the submission
+    const tc37_voteRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/vote`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${newStudentToken}`,
+      },
+      body: JSON.stringify({
+        submissionId: tc37_submissionId,
+      }),
+    });
+    const tc37_voteData = await tc37_voteRes.json();
+    assert(
+      tc37_voteRes.status === 200 &&
+        tc37_voteData.success &&
+        tc37_voteData.votesCount === 1 &&
+        tc37_voteData.hasVoted === true,
+      'Test Case 37h: Authenticated student casts vote; submission vote counter increments to 1'
+    );
+
+    // 37i: 1-Vote-Per-User-Per-Event Constraint: Voting again does NOT duplicate votes
+    const tc37_dupVoteRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/vote`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${newStudentToken}`,
+      },
+      body: JSON.stringify({
+        submissionId: tc37_submissionId,
+      }),
+    });
+    const tc37_dupVoteData = await tc37_dupVoteRes.json();
+    assert(
+      tc37_dupVoteRes.status === 200 &&
+        tc37_dupVoteData.success &&
+        tc37_dupVoteData.votesCount === 1,
+      'Test Case 37i: Strict 1-vote constraint enforced; repeated vote submission retains single count'
+    );
+
+    // 37j: Public Showcase Leaderboard returns ranked standing
+    const tc37_leaderboardRes = await fetch(`${BASE_URL}/events/${tc37_eventId}/showcase/leaderboard`);
+    const tc37_leaderboardData = await tc37_leaderboardRes.json();
+    assert(
+      tc37_leaderboardRes.status === 200 &&
+        tc37_leaderboardData.success &&
+        tc37_leaderboardData.leaderboard.length >= 1 &&
+        tc37_leaderboardData.leaderboard[0].id === tc37_submissionId &&
+        tc37_leaderboardData.leaderboard[0].votesCount === 1 &&
+        tc37_leaderboardData.leaderboard[0].rank === 1,
+      'Test Case 37j: GET /api/events/:id/showcase/leaderboard ranks submissions by vote tally with podium standings'
+    );
+
     console.log(`\n=== VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED ===`);
   } catch (err) {
     console.error('Test execution error:', err);

@@ -4,7 +4,7 @@ import { validateText } from '../utils/validation.js';
 import { validateSubmissionFile, storeDeliverableFile } from '../utils/fileStorage.js';
 
 /**
- * Submit or Update Project Deliverables (PDF, PPT, DOC, GitHub, Figma)
+ * Submit or Update Project Deliverables (PDF, PPT, DOC, GitHub, Figma, Round)
  */
 export const submitDeliverable = async (req, res) => {
   try {
@@ -19,7 +19,10 @@ export const submitDeliverable = async (req, res) => {
       fileSize = 0,
       githubUrl = '',
       figmaUrl = '',
+      roundId = null,
+      round_id = null,
     } = req.body;
+    const finalRoundId = roundId || round_id || null;
     const finalFileUrl = fileUrl || fileData;
     const userId = req.user.id || req.user._id;
 
@@ -82,18 +85,32 @@ export const submitDeliverable = async (req, res) => {
       teamId,
     });
 
-    // 6. Check if a submission already exists to allow seamless replacement/updating
+    // 6. Check if a submission already exists for this round/event to allow seamless replacement/updating
     let existingSubRes;
-    if (teamId) {
-      existingSubRes = await query(
-        `SELECT id FROM submissions WHERE team_id = $1 AND event_id = $2 LIMIT 1`,
-        [teamId, eventId]
-      );
+    if (finalRoundId) {
+      if (teamId) {
+        existingSubRes = await query(
+          `SELECT id FROM submissions WHERE team_id = $1 AND event_id = $2 AND round_id = $3 LIMIT 1`,
+          [teamId, eventId, finalRoundId]
+        );
+      } else {
+        existingSubRes = await query(
+          `SELECT id FROM submissions WHERE user_id = $1 AND event_id = $2 AND round_id = $3 LIMIT 1`,
+          [userId, eventId, finalRoundId]
+        );
+      }
     } else {
-      existingSubRes = await query(
-        `SELECT id FROM submissions WHERE user_id = $1 AND event_id = $2 LIMIT 1`,
-        [userId, eventId]
-      );
+      if (teamId) {
+        existingSubRes = await query(
+          `SELECT id FROM submissions WHERE team_id = $1 AND event_id = $2 LIMIT 1`,
+          [teamId, eventId]
+        );
+      } else {
+        existingSubRes = await query(
+          `SELECT id FROM submissions WHERE user_id = $1 AND event_id = $2 LIMIT 1`,
+          [userId, eventId]
+        );
+      }
     }
 
     let savedSubmission;
@@ -105,8 +122,8 @@ export const submitDeliverable = async (req, res) => {
         `UPDATE submissions
          SET title = $1, description = $2, file_url = $3, file_type = $4,
              file_name = $5, file_size = $6, github_url = $7, figma_url = $8,
-             user_id = $9, updated_at = NOW()
-         WHERE id = $10
+             user_id = $9, round_id = COALESCE($10, round_id), updated_at = NOW()
+         WHERE id = $11
          RETURNING *`,
         [
           titleCheck.value,
@@ -118,6 +135,7 @@ export const submitDeliverable = async (req, res) => {
           (githubUrl || '').trim(),
           (figmaUrl || '').trim(),
           userId,
+          finalRoundId,
           subId,
         ]
       );
@@ -126,15 +144,16 @@ export const submitDeliverable = async (req, res) => {
       const subId = crypto.randomUUID();
       const insertRes = await query(
         `INSERT INTO submissions (
-          id, team_id, event_id, user_id, title, description,
+          id, team_id, event_id, user_id, round_id, title, description,
           file_url, file_type, file_name, file_size, github_url, figma_url
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *`,
         [
           subId,
           teamId,
           eventId,
           userId,
+          finalRoundId,
           titleCheck.value,
           (description || '').trim(),
           stored.fileUrl,
@@ -172,6 +191,7 @@ export const submitDeliverable = async (req, res) => {
 export const getMySubmission = async (req, res) => {
   try {
     const { eventId } = req.params;
+    const { roundId } = req.query;
     const userId = req.user.id || req.user._id;
 
     // Check if team event
@@ -184,25 +204,40 @@ export const getMySubmission = async (req, res) => {
     );
 
     let subRes;
+    const roundFilter = roundId ? ' AND s.round_id = $3' : '';
+    const params = [eventId];
+
     if (teamRes.rows.length > 0) {
       const teamId = teamRes.rows[0].id;
+      params.unshift(teamId);
+      if (roundId) params.push(roundId);
+
       subRes = await query(
-        `SELECT s.*, t.name as team_name, u.name as submitter_name
+        `SELECT s.*, t.name as team_name, u.name as submitter_name,
+                er.round_number, er.title as round_title
          FROM submissions s
          LEFT JOIN teams t ON s.team_id = t.id
          LEFT JOIN users u ON s.user_id = u.id
-         WHERE s.team_id = $1 AND s.event_id = $2
+         LEFT JOIN event_rounds er ON s.round_id = er.id
+         WHERE s.team_id = $1 AND s.event_id = $2${roundFilter}
+         ORDER BY s.updated_at DESC
          LIMIT 1`,
-        [teamId, eventId]
+        params
       );
     } else {
+      params.unshift(userId);
+      if (roundId) params.push(roundId);
+
       subRes = await query(
-        `SELECT s.*, u.name as submitter_name
+        `SELECT s.*, u.name as submitter_name,
+                er.round_number, er.title as round_title
          FROM submissions s
          LEFT JOIN users u ON s.user_id = u.id
-         WHERE s.user_id = $1 AND s.event_id = $2
+         LEFT JOIN event_rounds er ON s.round_id = er.id
+         WHERE s.user_id = $1 AND s.event_id = $2${roundFilter}
+         ORDER BY s.updated_at DESC
          LIMIT 1`,
-        [userId, eventId]
+        params
       );
     }
 
@@ -236,10 +271,19 @@ export const getEventSubmissions = async (req, res) => {
 
     const subsRes = await query(
       `SELECT s.*, t.name as team_name, t.invite_code,
-              u.name as submitter_name, u.email as submitter_email
+              u.name as submitter_name, u.email as submitter_email,
+              er.round_number, er.title as round_title,
+              COALESCE(v.votes_count, 0) as votes_count
        FROM submissions s
        LEFT JOIN teams t ON s.team_id = t.id
        LEFT JOIN users u ON s.user_id = u.id
+       LEFT JOIN event_rounds er ON s.round_id = er.id
+       LEFT JOIN (
+         SELECT submission_id, COUNT(*) as votes_count
+         FROM votes
+         WHERE event_id = $1
+         GROUP BY submission_id
+       ) v ON v.submission_id = s.id
        WHERE s.event_id = $1
        ORDER BY s.submitted_at DESC`,
       [eventId]

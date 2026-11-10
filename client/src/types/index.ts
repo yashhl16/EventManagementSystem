@@ -100,6 +100,7 @@ export interface CollegeEvent {
   maxTeamSize?: number;
   certificateTemplateUrl?: string;
   certificateTemplateConfig?: CertificateTemplateConfig | null;
+  rounds?: EventRound[];
   status: EventStatus;
   rejectionReason?: string;
   tags: string[];
@@ -263,12 +264,28 @@ export interface TeamMember {
   user?: Partial<User>;
 }
 
+export interface EventRound {
+  id: string;
+  _id?: string;
+  eventId: string;
+  roundNumber: number;
+  title: string;
+  description?: string;
+  deadline?: string | null;
+  status: 'upcoming' | 'active' | 'completed';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Submission {
   id: string;
   _id?: string;
   teamId?: string;
   eventId: string;
   userId?: string;
+  roundId?: string | null;
+  roundNumber?: number | null;
+  roundTitle?: string | null;
   title: string;
   description?: string;
   fileUrl: string;
@@ -281,6 +298,36 @@ export interface Submission {
   updatedAt?: string;
   teamName?: string;
   submitterName?: string;
+  votesCount?: number;
+  hasVoted?: boolean;
+  members?: Array<{ name: string; avatar?: string; role: string }>;
+}
+
+export interface LFTPost {
+  id: string;
+  _id?: string;
+  userId: string;
+  eventId: string;
+  skills: string[];
+  bio?: string;
+  contactPreference?: string;
+  status: 'open' | 'matched' | 'closed';
+  createdAt: string;
+  updatedAt?: string;
+  user?: Partial<User>;
+  userName?: string;
+  userAvatar?: string;
+  userDepartment?: string;
+  userEmail?: string;
+}
+
+export interface Vote {
+  id: string;
+  _id?: string;
+  submissionId: string;
+  userId: string;
+  eventId: string;
+  createdAt: string;
 }
 
 export interface Team {

@@ -15,7 +15,7 @@ import {
   FileCheck,
   Check,
 } from 'lucide-react';
-import { Submission } from '../../types';
+import { Submission, EventRound } from '../../types';
 import { submissionService } from '../../services/api';
 import { Button } from '../common/Button';
 
@@ -23,6 +23,7 @@ interface EventSubmissionCardProps {
   eventId: string;
   isRegistered: boolean;
   submission: Submission | null;
+  rounds?: EventRound[];
   onSubmissionSuccess: () => Promise<void>;
   onRegisterClick?: () => void;
 }
@@ -31,6 +32,7 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
   eventId,
   isRegistered,
   submission,
+  rounds = [],
   onSubmissionSuccess,
   onRegisterClick,
 }) => {
@@ -39,6 +41,11 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
   // Form fields
+  const [selectedRoundId, setSelectedRoundId] = useState<string>(() => {
+    if (submission?.roundId) return submission.roundId;
+    const active = rounds.find((r) => r.status === 'active');
+    return active ? active.id : (rounds[0]?.id || '');
+  });
   const [title, setTitle] = useState(submission?.title || '');
   const [description, setDescription] = useState(submission?.description || '');
   const [githubUrl, setGithubUrl] = useState(submission?.githubUrl || '');
@@ -118,6 +125,7 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
         fileSize: selectedFile?.size || 0,
         githubUrl: githubUrl.trim(),
         figmaUrl: figmaUrl.trim(),
+        roundId: selectedRoundId || undefined,
       });
 
       if (res.data.success) {
@@ -330,6 +338,26 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
             >
               {statusMessage.isError ? <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" /> : <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
               <span>{statusMessage.text}</span>
+            </div>
+          )}
+
+          {/* Round / Competition Stage */}
+          {rounds && rounds.length > 0 && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Target Competition Stage / Round
+              </label>
+              <select
+                value={selectedRoundId}
+                onChange={(e) => setSelectedRoundId(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                {rounds.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    Stage {r.roundNumber}: {r.title} ({r.status.toUpperCase()})
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
