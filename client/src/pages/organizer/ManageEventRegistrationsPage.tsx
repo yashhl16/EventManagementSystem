@@ -177,12 +177,41 @@ export const ManageEventRegistrationsPage: React.FC = () => {
     if (!eventId) return;
     setIsLoadingSubmissions(true);
     try {
-      const res = await submissionService.getOrganizerSubmissions(eventId);
-      if (res.data?.success) {
-        setSubmissions(res.data.submissions || []);
+      let res;
+      try {
+        res = await submissionService.getOrganizerSubmissions(eventId);
+      } catch (e) {
+        res = await submissionService.getEventSubmissions(eventId);
       }
+      const rawData = res?.data;
+      const list = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(rawData?.submissions)
+        ? rawData.submissions
+        : Array.isArray(rawData?.deliverables)
+        ? rawData.deliverables
+        : Array.isArray(rawData?.data)
+        ? rawData.data
+        : [];
+      setSubmissions(list);
     } catch (err: any) {
       console.error('Failed to load event submissions', err);
+      try {
+        const fallbackRes = await submissionService.getEventSubmissions(eventId);
+        const fbData = fallbackRes?.data;
+        const list = Array.isArray(fbData)
+          ? fbData
+          : Array.isArray(fbData?.submissions)
+          ? fbData.submissions
+          : Array.isArray(fbData?.deliverables)
+          ? fbData.deliverables
+          : Array.isArray(fbData?.data)
+          ? fbData.data
+          : [];
+        setSubmissions(list);
+      } catch (fallbackErr) {
+        console.error('Fallback load event submissions also failed', fallbackErr);
+      }
     } finally {
       setIsLoadingSubmissions(false);
     }
@@ -192,6 +221,12 @@ export const ManageEventRegistrationsPage: React.FC = () => {
     fetchRoster();
     fetchSubmissions();
   }, [eventId]);
+
+  useEffect(() => {
+    if (activeTab === 'submissions' && eventId) {
+      fetchSubmissions();
+    }
+  }, [activeTab, eventId]);
 
   const handleExportCSV = async () => {
     if (!eventId || !event) return;
@@ -374,6 +409,8 @@ export const ManageEventRegistrationsPage: React.FC = () => {
     const studentName = (
       sub.fullName ||
       sub.submitterName ||
+      sub.user?.fullName ||
+      sub.user?.name ||
       sub.student?.fullName ||
       sub.student?.name ||
       ''
@@ -381,21 +418,38 @@ export const ManageEventRegistrationsPage: React.FC = () => {
     const studentEmail = (
       sub.email ||
       sub.submitterEmail ||
+      sub.user?.email ||
       sub.student?.email ||
       ''
     ).toLowerCase();
     const rollNo = (
       sub.rollNumber ||
       sub.studentId ||
+      sub.user?.rollNumber ||
+      sub.user?.studentId ||
       sub.student?.rollNumber ||
       sub.student?.studentId ||
       ''
     ).toLowerCase();
-    const dept = (sub.department || sub.student?.department || '').toLowerCase();
+    const dept = (
+      sub.department ||
+      sub.user?.department ||
+      sub.student?.department ||
+      ''
+    ).toLowerCase();
     const title = (sub.title || '').toLowerCase();
     const desc = (sub.description || '').toLowerCase();
-    const team = (sub.teamName || '').toLowerCase();
-    const fileName = (sub.fileName || '').toLowerCase();
+    const team = (
+      sub.teamName ||
+      sub.team?.name ||
+      sub.team?.teamName ||
+      ''
+    ).toLowerCase();
+    const fileName = (
+      sub.fileName ||
+      (sub.fileUrl ? sub.fileUrl.split('/').pop()?.split('?')[0] : '') ||
+      ''
+    ).toLowerCase();
 
     const matchesSearch =
       !q ||
@@ -409,7 +463,11 @@ export const ManageEventRegistrationsPage: React.FC = () => {
       fileName.includes(q);
 
     const fType = (sub.fileType || '').toLowerCase();
-    const fName = (sub.fileName || '').toLowerCase();
+    const fName = (
+      sub.fileName ||
+      (sub.fileUrl ? sub.fileUrl.split('/').pop()?.split('?')[0] : '') ||
+      ''
+    ).toLowerCase();
     let matchesType = true;
     if (submissionFileTypeFilter === 'pptx') {
       matchesType =
@@ -426,10 +484,12 @@ export const ManageEventRegistrationsPage: React.FC = () => {
         fName.endsWith('.doc');
     }
 
+    const roundId = String(sub.roundId || sub.round?.id || sub.round?._id || '');
+    const roundNum = String(sub.roundNumber || sub.round?.roundNumber || '');
     const matchesRound =
       submissionRoundFilter === 'all' ||
-      String(sub.roundId || '') === submissionRoundFilter ||
-      String(sub.roundNumber || '') === submissionRoundFilter;
+      roundId === submissionRoundFilter ||
+      roundNum === submissionRoundFilter;
 
     return matchesSearch && matchesType && matchesRound;
   });
@@ -1137,21 +1197,57 @@ export const ManageEventRegistrationsPage: React.FC = () => {
                   const studentName =
                     sub.fullName ||
                     sub.submitterName ||
+                    sub.user?.fullName ||
+                    sub.user?.name ||
                     sub.student?.fullName ||
                     sub.student?.name ||
                     'Participant';
                   const rollNo =
                     sub.rollNumber ||
                     sub.studentId ||
+                    sub.user?.rollNumber ||
+                    sub.user?.studentId ||
                     sub.student?.rollNumber ||
                     sub.student?.studentId ||
                     '—';
-                  const dept = sub.department || sub.student?.department || 'General';
-                  const email = sub.email || sub.submitterEmail || sub.student?.email || '—';
-                  const avatar = sub.avatar || sub.student?.avatar || '';
-                  const fileBadge = getFileBadge(sub.fileType, sub.fileName);
+                  const dept =
+                    sub.department ||
+                    sub.user?.department ||
+                    sub.student?.department ||
+                    'General';
+                  const email =
+                    sub.email ||
+                    sub.submitterEmail ||
+                    sub.user?.email ||
+                    sub.student?.email ||
+                    '—';
+                  const avatar =
+                    sub.avatar ||
+                    sub.user?.avatar ||
+                    sub.student?.avatar ||
+                    '';
+                  const teamTitle =
+                    sub.teamName ||
+                    sub.team?.name ||
+                    sub.team?.teamName ||
+                    null;
+                  const roundTitleText =
+                    sub.roundTitle ||
+                    sub.round?.title ||
+                    null;
+                  const roundNum =
+                    sub.roundNumber ||
+                    sub.round?.roundNumber ||
+                    null;
+                  const resolvedFileName =
+                    sub.fileName ||
+                    (sub.fileUrl ? sub.fileUrl.split('/').pop()?.split('?')[0] : '') ||
+                    'Deliverable file';
+                  const fileBadge = getFileBadge(sub.fileType, resolvedFileName);
                   const fileUrl = sub.fileUrl || sub.documentUrl || '';
                   const hasExternal = !!sub.githubUrl || !!sub.figmaUrl;
+                  const submittedTimestamp =
+                    sub.submittedAt || sub.createdAt || sub.updatedAt;
 
                   return (
                     <tr
@@ -1175,10 +1271,10 @@ export const ManageEventRegistrationsPage: React.FC = () => {
                           <div>
                             <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                               <span>{studentName}</span>
-                              {sub.teamName && (
+                              {teamTitle && (
                                 <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50">
                                   <Users className="h-2.5 w-2.5" />
-                                  {sub.teamName}
+                                  {teamTitle}
                                 </span>
                               )}
                             </p>
@@ -1205,11 +1301,11 @@ export const ManageEventRegistrationsPage: React.FC = () => {
                               {sub.description}
                             </p>
                           )}
-                          {sub.roundTitle && (
+                          {(roundTitleText || roundNum) && (
                             <div className="pt-0.5">
                               <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                                 <Layers className="h-2.5 w-2.5" />
-                                Round {sub.roundNumber || 1}: {sub.roundTitle}
+                                Round {roundNum || 1}{roundTitleText ? `: ${roundTitleText}` : ''}
                               </span>
                             </div>
                           )}
@@ -1226,8 +1322,8 @@ export const ManageEventRegistrationsPage: React.FC = () => {
                               {fileBadge.icon}
                               <span>{fileBadge.label}</span>
                             </span>
-                            <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]" title={sub.fileName}>
-                              {sub.fileName || 'Deliverable file'}
+                            <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]" title={resolvedFileName}>
+                              {resolvedFileName}
                             </span>
                           </div>
                           {sub.fileSize && sub.fileSize > 0 && (
@@ -1287,7 +1383,7 @@ export const ManageEventRegistrationsPage: React.FC = () => {
                       <td className="py-3.5 px-3.5 whitespace-nowrap">
                         <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs">
                           <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                          {formatDateTime(sub.submittedAt || sub.createdAt)}
+                          {formatDateTime(submittedTimestamp)}
                         </span>
                       </td>
 
@@ -1337,22 +1433,51 @@ export const ManageEventRegistrationsPage: React.FC = () => {
         <div className="rounded-xl bg-slate-50 p-3.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 dark:text-white">
-              {previewSubmission.fullName || previewSubmission.submitterName || 'Student'}
+              {previewSubmission.fullName ||
+                previewSubmission.submitterName ||
+                previewSubmission.user?.fullName ||
+                previewSubmission.user?.name ||
+                previewSubmission.student?.fullName ||
+                previewSubmission.student?.name ||
+                'Student'}
             </span>
-            {previewSubmission.teamName && (
+            {(previewSubmission.teamName || previewSubmission.team?.name) && (
               <span className="rounded bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
-                Team: {previewSubmission.teamName}
+                Team: {previewSubmission.teamName || previewSubmission.team?.name}
               </span>
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Roll Number: <span className="font-mono font-medium text-slate-700 dark:text-slate-200">{previewSubmission.rollNumber || previewSubmission.studentId || '—'}</span> • Department: {previewSubmission.department || 'General'}
+            Roll Number:{' '}
+            <span className="font-mono font-medium text-slate-700 dark:text-slate-200">
+              {previewSubmission.rollNumber ||
+                previewSubmission.studentId ||
+                previewSubmission.user?.rollNumber ||
+                previewSubmission.user?.studentId ||
+                previewSubmission.student?.rollNumber ||
+                '—'}
+            </span>{' '}
+            • Department:{' '}
+            {previewSubmission.department ||
+              previewSubmission.user?.department ||
+              previewSubmission.student?.department ||
+              'General'}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Email: {previewSubmission.email || previewSubmission.submitterEmail || '—'}
+            Email:{' '}
+            {previewSubmission.email ||
+              previewSubmission.submitterEmail ||
+              previewSubmission.user?.email ||
+              previewSubmission.student?.email ||
+              '—'}
           </p>
           <p className="text-[11px] text-slate-400 pt-1">
-            Submitted on {formatDateTime(previewSubmission.submittedAt || previewSubmission.createdAt)}
+            Submitted on{' '}
+            {formatDateTime(
+              previewSubmission.submittedAt ||
+                previewSubmission.createdAt ||
+                previewSubmission.updatedAt
+            )}
           </p>
         </div>
 

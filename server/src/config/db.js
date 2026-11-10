@@ -839,6 +839,41 @@ export const mapTeamMember = (row) => {
 
 export const mapSubmission = (row) => {
   if (!row) return null;
+  const fullName = row.user_name || row.submitter_name || row.full_name || 'Participant';
+  const rollNumber = row.user_student_id || row.student_id || row.roll_number || '';
+  const department = row.user_department || row.department || 'General';
+  const email = row.user_email || row.submitter_email || row.email || '';
+  const avatar = row.user_avatar || row.avatar || '';
+  const phone = row.user_phone || row.phone || '';
+  const timestamp = row.submitted_at || row.created_at || new Date().toISOString();
+
+  const userObj = {
+    id: row.student_user_id || row.user_id,
+    _id: row.student_user_id || row.user_id,
+    name: fullName,
+    fullName,
+    email,
+    rollNumber,
+    studentId: rollNumber,
+    department,
+    avatar,
+    phone,
+  };
+
+  const roundObj = row.round_title ? {
+    id: row.round_id,
+    roundNumber: row.round_number ? Number(row.round_number) : 1,
+    title: row.round_title,
+    status: row.round_status || 'upcoming',
+  } : (row.round_id ? { id: row.round_id } : null);
+
+  const teamObj = row.team_name ? {
+    id: row.team_id,
+    name: row.team_name,
+    teamName: row.team_name,
+    inviteCode: row.team_invite_code || row.invite_code,
+  } : null;
+
   return {
     id: row.id,
     _id: row.id,
@@ -857,11 +892,23 @@ export const mapSubmission = (row) => {
     fileSize: Number(row.file_size) || 0,
     githubUrl: row.github_url || '',
     figmaUrl: row.figma_url || '',
-    submittedAt: row.submitted_at,
-    updatedAt: row.updated_at,
+    submittedAt: timestamp,
+    createdAt: timestamp,
+    updatedAt: row.updated_at || timestamp,
     teamName: row.team_name,
-    submitterName: row.submitter_name,
-    submitterEmail: row.submitter_email,
+    submitterName: fullName,
+    submitterEmail: email,
+    fullName,
+    rollNumber,
+    studentId: rollNumber,
+    department,
+    email,
+    avatar,
+    phone,
+    user: userObj,
+    student: userObj,
+    round: roundObj,
+    team: teamObj,
     members: Array.isArray(row.members) ? row.members : (typeof row.members === 'string' ? JSON.parse(row.members) : undefined),
   };
 };

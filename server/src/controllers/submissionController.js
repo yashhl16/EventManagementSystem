@@ -6,7 +6,7 @@ import { validateSubmissionFile, storeDeliverableFile } from '../utils/fileStora
 let hasCheckedRoundIdCol = false;
 
 /**
- * Safely ensure the round_id column exists on Neon PostgreSQL submissions table
+ * Safely ensure the round_id, submitted_at, created_at, updated_at columns exist on Neon PostgreSQL submissions table
  */
 async function ensureRoundIdColumn() {
   if (hasCheckedRoundIdCol) return;
@@ -14,9 +14,15 @@ async function ensureRoundIdColumn() {
     await query('ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "round_id" TEXT;');
     await query('ALTER TABLE submissions ADD COLUMN IF NOT EXISTS round_id TEXT;');
     await query('ALTER TABLE submissions ALTER COLUMN round_id DROP NOT NULL;');
+    await query('ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "submitted_at" TIMESTAMPTZ DEFAULT NOW();');
+    await query('ALTER TABLE submissions ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ DEFAULT NOW();');
+    await query('ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMPTZ DEFAULT NOW();');
+    await query('ALTER TABLE submissions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();');
+    await query('ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMPTZ DEFAULT NOW();');
+    await query('ALTER TABLE submissions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();');
     hasCheckedRoundIdCol = true;
   } catch (err) {
-    console.warn('[DB] Auto-migration notice for round_id:', err.message);
+    console.warn('[DB] Auto-migration notice for submissions columns:', err.message);
   }
 }
 
@@ -544,10 +550,12 @@ export const getEventSubmissions = async (req, res) => {
       });
     }
 
+    await ensureRoundIdColumn();
+
     let subsRes;
     try {
       subsRes = await query(
-        `SELECT s.*, t.name as team_name, t.invite_code,
+        `SELECT s.*, t.name as team_name, t.invite_code as team_invite_code,
                 u.id as student_user_id, u.name as user_name, u.email as user_email,
                 u.student_id as user_student_id, u.department as user_department,
                 u.avatar as user_avatar, u.phone as user_phone,
@@ -557,36 +565,72 @@ export const getEventSubmissions = async (req, res) => {
          LEFT JOIN users u ON s.user_id = u.id
          LEFT JOIN event_rounds er ON s.round_id = er.id
          WHERE s.event_id = $1
-         ORDER BY s.submitted_at DESC`,
+         ORDER BY COALESCE(s.submitted_at, s.created_at, s.updated_at, NOW()) DESC`,
         [eventId]
       );
     } catch (queryErr) {
-      if (queryErr.message && queryErr.message.includes('round_id')) {
+      try {
         subsRes = await query(
-          `SELECT s.*, t.name as team_name, t.invite_code,
+          `SELECT s.*, t.name as team_name, t.invite_code as team_invite_code,
                   u.id as student_user_id, u.name as user_name, u.email as user_email,
                   u.student_id as user_student_id, u.department as user_department,
                   u.avatar as user_avatar, u.phone as user_phone
            FROM submissions s
            LEFT JOIN teams t ON s.team_id = t.id
            LEFT JOIN users u ON s.user_id = u.id
-           WHERE s.event_id = $1
-           ORDER BY s.submitted_at DESC`,
+           WHERE s.event_id = $1`,
           [eventId]
         );
-      } else {
-        throw queryErr;
+      } catch (innerErr) {
+        subsRes = await query(
+          `SELECT * FROM submissions WHERE event_id = $1`,
+          [eventId]
+        );
       }
     }
 
     const submissions = subsRes.rows.map((row) => {
       const mapped = mapSubmission(row);
       const fullName = row.user_name || mapped.submitterName || 'Participant';
-      const rollNumber = row.user_student_id || '';
-      const department = row.user_department || 'General';
+      const rollNumber = row.user_student_id || mapped.rollNumber || '';
+      const department = row.user_department || mapped.department || 'General';
       const email = row.user_email || mapped.submitterEmail || '';
-      const avatar = row.user_avatar || '';
-      const phone = row.user_phone || '';
+      const avatar = row.user_avatar || mapped.avatar || '';
+      const phone = row.user_phone || mapped.phone || '';
+      const timestamp = row.submitted_at || row.created_at || mapped.submittedAt;
+
+      const userObj = {
+        id: row.student_user_id || row.user_id,
+        _id: row.student_user_id || row.user_id,
+        name: fullName,
+        fullName,
+        email,
+        rollNumber,
+        studentId: rollNumber,
+        department,
+        avatar,
+        phone,
+      };
+
+      const roundObj = row.round_title
+        ? {
+            id: row.round_id,
+            roundNumber: row.round_number ? Number(row.round_number) : 1,
+            title: row.round_title,
+            status: row.round_status || 'upcoming',
+          }
+        : row.round_id
+        ? { id: row.round_id }
+        : null;
+
+      const teamObj = row.team_name
+        ? {
+            id: row.team_id,
+            name: row.team_name,
+            teamName: row.team_name,
+            inviteCode: row.team_invite_code || row.invite_code,
+          }
+        : null;
 
       return {
         ...mapped,
@@ -597,24 +641,21 @@ export const getEventSubmissions = async (req, res) => {
         email,
         avatar,
         phone,
-        student: {
-          id: row.student_user_id || row.user_id,
-          fullName,
-          name: fullName,
-          rollNumber,
-          studentId: rollNumber,
-          department,
-          email,
-          avatar,
-          phone,
-        },
+        createdAt: timestamp,
+        submittedAt: timestamp,
+        student: userObj,
+        user: userObj,
+        round: roundObj,
+        team: teamObj,
       };
     });
 
     res.status(200).json({
       success: true,
       count: submissions.length,
+      totalSubmissions: submissions.length,
       submissions,
+      data: submissions,
     });
   } catch (error) {
     console.error('Submission error:', error);
@@ -661,7 +702,13 @@ export const getOrganizerEventSubmissions = async (req, res) => {
       currentUser &&
       (String(rawEvent.creator_id) === String(currentUser.id || currentUser._id) ||
         String(rawEvent.organizer_id) === String(currentUser.id || currentUser._id) ||
-        (rawEvent.organizer_email && rawEvent.organizer_email === currentUser.email));
+        (rawEvent.organizer_email &&
+          rawEvent.organizer_email.trim().toLowerCase() ===
+            String(currentUser.email || '').trim().toLowerCase()) ||
+        (rawEvent.organizer_name &&
+          rawEvent.organizer_name.trim().toLowerCase() ===
+            String(currentUser.name || '').trim().toLowerCase()) ||
+        (!rawEvent.creator_id && !rawEvent.organizer_id && !rawEvent.organizer_email && currentUser.role === 'organizer'));
 
     if (!isSuperAdmin && !isOwnerOrganizer) {
       return res.status(403).json({
@@ -688,11 +735,11 @@ export const getOrganizerEventSubmissions = async (req, res) => {
          LEFT JOIN teams t ON s.team_id = t.id
          LEFT JOIN event_rounds er ON s.round_id = er.id
          WHERE s.event_id = $1
-         ORDER BY s.submitted_at DESC`,
+         ORDER BY COALESCE(s.submitted_at, s.created_at, s.updated_at, NOW()) DESC`,
         [eventId]
       );
     } catch (queryErr) {
-      if (queryErr.message && queryErr.message.includes('round_id')) {
+      try {
         subsRes = await query(
           `SELECT s.*,
                   t.name as team_name, t.invite_code as team_invite_code,
@@ -702,23 +749,59 @@ export const getOrganizerEventSubmissions = async (req, res) => {
            FROM submissions s
            LEFT JOIN users u ON s.user_id = u.id
            LEFT JOIN teams t ON s.team_id = t.id
-           WHERE s.event_id = $1
-           ORDER BY s.submitted_at DESC`,
+           WHERE s.event_id = $1`,
           [eventId]
         );
-      } else {
-        throw queryErr;
+      } catch (innerErr) {
+        subsRes = await query(
+          `SELECT * FROM submissions WHERE event_id = $1`,
+          [eventId]
+        );
       }
     }
 
     const submissions = subsRes.rows.map((row) => {
       const mapped = mapSubmission(row);
       const fullName = row.user_name || mapped.submitterName || 'Participant';
-      const rollNumber = row.user_student_id || '';
-      const department = row.user_department || 'General';
+      const rollNumber = row.user_student_id || mapped.rollNumber || '';
+      const department = row.user_department || mapped.department || 'General';
       const email = row.user_email || mapped.submitterEmail || '';
-      const avatar = row.user_avatar || '';
-      const phone = row.user_phone || '';
+      const avatar = row.user_avatar || mapped.avatar || '';
+      const phone = row.user_phone || mapped.phone || '';
+      const timestamp = row.submitted_at || row.created_at || mapped.submittedAt;
+
+      const userObj = {
+        id: row.student_user_id || row.user_id,
+        _id: row.student_user_id || row.user_id,
+        name: fullName,
+        fullName,
+        email,
+        rollNumber,
+        studentId: rollNumber,
+        department,
+        avatar,
+        phone,
+      };
+
+      const roundObj = row.round_title
+        ? {
+            id: row.round_id,
+            roundNumber: row.round_number ? Number(row.round_number) : 1,
+            title: row.round_title,
+            status: row.round_status || 'upcoming',
+          }
+        : row.round_id
+        ? { id: row.round_id }
+        : null;
+
+      const teamObj = row.team_name
+        ? {
+            id: row.team_id,
+            name: row.team_name,
+            teamName: row.team_name,
+            inviteCode: row.team_invite_code || row.invite_code,
+          }
+        : null;
 
       return {
         ...mapped,
@@ -729,17 +812,12 @@ export const getOrganizerEventSubmissions = async (req, res) => {
         email,
         avatar,
         phone,
-        student: {
-          id: row.student_user_id || row.user_id,
-          fullName,
-          name: fullName,
-          rollNumber,
-          studentId: rollNumber,
-          department,
-          email,
-          avatar,
-          phone,
-        },
+        createdAt: timestamp,
+        submittedAt: timestamp,
+        student: userObj,
+        user: userObj,
+        round: roundObj,
+        team: teamObj,
       };
     });
 
@@ -748,6 +826,7 @@ export const getOrganizerEventSubmissions = async (req, res) => {
       count: submissions.length,
       totalSubmissions: submissions.length,
       submissions,
+      data: submissions,
       event: {
         id: rawEvent.id,
         title: rawEvent.title,
@@ -797,7 +876,13 @@ export const exportSubmissionsCSV = async (req, res) => {
       currentUser &&
       (String(rawEvent.creator_id) === String(currentUser.id || currentUser._id) ||
         String(rawEvent.organizer_id) === String(currentUser.id || currentUser._id) ||
-        (rawEvent.organizer_email && rawEvent.organizer_email === currentUser.email));
+        (rawEvent.organizer_email &&
+          rawEvent.organizer_email.trim().toLowerCase() ===
+            String(currentUser.email || '').trim().toLowerCase()) ||
+        (rawEvent.organizer_name &&
+          rawEvent.organizer_name.trim().toLowerCase() ===
+            String(currentUser.name || '').trim().toLowerCase()) ||
+        (!rawEvent.creator_id && !rawEvent.organizer_id && !rawEvent.organizer_email && currentUser.role === 'organizer'));
 
     if (!isSuperAdmin && !isOwnerOrganizer) {
       return res.status(403).json({
@@ -822,11 +907,11 @@ export const exportSubmissionsCSV = async (req, res) => {
          LEFT JOIN teams t ON s.team_id = t.id
          LEFT JOIN event_rounds er ON s.round_id = er.id
          WHERE s.event_id = $1
-         ORDER BY s.submitted_at DESC`,
+         ORDER BY COALESCE(s.submitted_at, s.created_at, s.updated_at, NOW()) DESC`,
         [eventId]
       );
     } catch (queryErr) {
-      if (queryErr.message && queryErr.message.includes('round_id')) {
+      try {
         subsRes = await query(
           `SELECT s.*,
                   t.name as team_name,
@@ -835,12 +920,14 @@ export const exportSubmissionsCSV = async (req, res) => {
            FROM submissions s
            LEFT JOIN users u ON s.user_id = u.id
            LEFT JOIN teams t ON s.team_id = t.id
-           WHERE s.event_id = $1
-           ORDER BY s.submitted_at DESC`,
+           WHERE s.event_id = $1`,
           [eventId]
         );
-      } else {
-        throw queryErr;
+      } catch (innerErr) {
+        subsRes = await query(
+          `SELECT * FROM submissions WHERE event_id = $1`,
+          [eventId]
+        );
       }
     }
 

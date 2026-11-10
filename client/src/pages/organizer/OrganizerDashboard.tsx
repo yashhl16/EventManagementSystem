@@ -244,11 +244,18 @@ export const OrganizerDashboard: React.FC = () => {
                       <td className="py-3 px-3 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <Link
-                            to={`/organizer/events/${event._id}`}
+                            to={`/organizer/events/${event._id || event.id}`}
                             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
                             title="Manage Registrations & Attendee Roster"
                           >
                             Registrations & Roster
+                          </Link>
+                          <Link
+                            to={`/organizer/events/${event._id || event.id}/submissions`}
+                            className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 transition"
+                            title="Inspect Project Deliverables & Submissions"
+                          >
+                            Submissions
                           </Link>
                           <Link
                             to={`/organizer/edit-event/${event._id}`}

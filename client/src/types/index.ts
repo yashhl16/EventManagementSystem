@@ -309,6 +309,9 @@ export interface Submission {
   avatar?: string;
   phone?: string;
   student?: Partial<User>;
+  user?: Partial<User>;
+  round?: any;
+  team?: any;
   members?: Array<{ name: string; avatar?: string; role: string }>;
 }
 

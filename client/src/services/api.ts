@@ -264,12 +264,19 @@ export const submissionService = {
   getOrganizerSubmissions: (eventId: string) =>
     api
       .get(`/organizer/events/${eventId}/submissions`)
-      .catch(() => api.get(`/events/${eventId}/submissions`)),
+      .catch(() => api.get(`/events/${eventId}/submissions`))
+      .catch(() => api.get(`/submissions/${eventId}`)),
 
   exportSubmissionsCSV: (eventId: string) =>
-    api.get(`/organizer/events/${eventId}/submissions/export-csv`, {
-      responseType: 'blob',
-    }),
+    api
+      .get(`/organizer/events/${eventId}/submissions/export-csv`, {
+        responseType: 'blob',
+      })
+      .catch(() =>
+        api.get(`/events/${eventId}/submissions/export-csv`, {
+          responseType: 'blob',
+        })
+      ),
 };
 
 /* ================= LFT (LOOKING FOR TEAM) API ================= */

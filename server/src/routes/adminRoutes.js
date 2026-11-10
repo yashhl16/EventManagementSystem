@@ -19,6 +19,10 @@ import {
   exportAttendanceCSV,
   getGlobalRegistrations,
 } from '../controllers/adminController.js';
+import {
+  getOrganizerEventSubmissions,
+  exportSubmissionsCSV,
+} from '../controllers/submissionController.js';
 import { protect, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -36,6 +40,8 @@ router.post('/events', createAdminEvent);
 router.put('/events/:eventId', updateAdminEvent);
 router.put('/events/:eventId/status', changeAdminEventStatus);
 router.delete('/events/:eventId', deleteAdminEvent);
+router.get('/events/:eventId/submissions', getOrganizerEventSubmissions);
+router.get('/events/:eventId/submissions/export-csv', exportSubmissionsCSV);
 
 // Global Campus Registration Management
 router.get('/registrations', getGlobalRegistrations);
