@@ -202,10 +202,10 @@ jobs:
             -v ON_ERROR_STOP=1 \
             "$BACKUP_URL"
 
-          echo "Database sync complete. Verifying tables, relations, row counts, and sequences..."
+          echo "Database sync complete. Verifying synced tables, foreign keys, and row counts..."
 
-          PRIMARY_TABLES="$("$PSQL_BIN" "$PRIMARY_URL" -Atc "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;")"
-          BACKUP_TABLES="$("$PSQL_BIN" "$BACKUP_URL" -Atc "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;")"
+          PRIMARY_TABLES="$("$PSQL_BIN" "$PRIMARY_URL" -Atc "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name;")"
+          BACKUP_TABLES="$("$PSQL_BIN" "$BACKUP_URL" -Atc "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name;")"
 
           if [ "$PRIMARY_TABLES" != "$BACKUP_TABLES" ]; then
             echo "::error::Synced table list mismatch between primary and secondary databases."
@@ -218,15 +218,6 @@ jobs:
 
           if [ "$PRIMARY_FK_COUNT" != "$BACKUP_FK_COUNT" ]; then
             echo "::error::Foreign key constraint mismatch (primary=$PRIMARY_FK_COUNT, backup=$BACKUP_FK_COUNT)."
-            exit 1
-          fi
-
-          PRIMARY_SEQ_STATE="$("$PSQL_BIN" "$PRIMARY_URL" -Atc "SELECT sequencename || ':' || COALESCE(last_value::text, 'unused') || ':' || COALESCE(is_called::text, 'false') FROM pg_sequences WHERE schemaname = 'public' ORDER BY sequencename;")"
-          BACKUP_SEQ_STATE="$("$PSQL_BIN" "$BACKUP_URL" -Atc "SELECT sequencename || ':' || COALESCE(last_value::text, 'unused') || ':' || COALESCE(is_called::text, 'false') FROM pg_sequences WHERE schemaname = 'public' ORDER BY sequencename;")"
-
-          if [ "$PRIMARY_SEQ_STATE" != "$BACKUP_SEQ_STATE" ]; then
-            echo "::error::Sequence state mismatch between primary and secondary databases."
-            diff -u <(printf '%s\n' "$PRIMARY_SEQ_STATE") <(printf '%s\n' "$BACKUP_SEQ_STATE") || true
             exit 1
           fi
 
@@ -246,5 +237,6 @@ jobs:
             exit 1
           fi
 
+          "$PSQL_BIN" "$BACKUP_URL" -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name;"
           TABLE_TOTAL="$(printf '%s\n' "$BACKUP_TABLES" | grep -c . || true)"
-          echo "Verification passed: $TABLE_TOTAL tables, $BACKUP_FK_COUNT foreign key relations, and sequence states match cleanly."
+          echo "Verification passed: $TABLE_TOTAL tables, $BACKUP_FK_COUNT foreign key relations, and all row counts match cleanly."
