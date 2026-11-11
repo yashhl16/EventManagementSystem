@@ -71,8 +71,14 @@ jobs:
           PRIMARY_URL: ${{ secrets.DATABASE_URL }}
           BACKUP_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
           PGSSLMODE: require
+          PGCONNECT_TIMEOUT: 30
         run: |
           set -euo pipefail
+
+          # Force Ubuntu glibc resolver to prefer IPv4 over IPv6 for dual-stack hosts (GitHub runners lack IPv6 egress)
+          if [ "$(uname -s)" = "Linux" ] && command -v sudo >/dev/null 2>&1; then
+            sudo sh -c 'grep -q "^precedence ::ffff:0:0/96  100" /etc/gai.conf 2>/dev/null || echo "precedence ::ffff:0:0/96  100" >> /etc/gai.conf'
+          fi
 
           PYTHON_BIN=""
           for candidate_py in python3 python; do
@@ -122,6 +128,36 @@ jobs:
           echo "::add-mask::$PRIMARY_URL"
           echo "::add-mask::$BACKUP_URL"
 
+          # Verify IPv4 DNS reachability and warn on Supabase Transaction Pooler port 6543 vs Session Mode port 5432
+          verify_ipv4_endpoint() {
+            local label="$1"
+            local uri="$2"
+            [ -z "$PYTHON_BIN" ] && return 0
+            CHECK_LABEL="$label" CHECK_URI="$uri" "$PYTHON_BIN" -c '
+          import os, socket, sys, urllib.parse
+          label = os.environ["CHECK_LABEL"]
+          parsed = urllib.parse.urlsplit(os.environ["CHECK_URI"])
+          host = parsed.hostname or ""
+          port = parsed.port or 5432
+          if not host:
+              sys.exit(0)
+          if host.endswith(".pooler.supabase.com") and port == 6543:
+              print(f"::warning::{label} uses Supabase Transaction Pooler (port 6543). For pg_dump/psql restores, Session Mode on port 5432 ({host}:5432) is recommended if pooler session/timeout errors occur.")
+          try:
+              socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+          except socket.gaierror:
+              try:
+                  socket.getaddrinfo(host, port, socket.AF_INET6, socket.SOCK_STREAM)
+              except socket.gaierror:
+                  sys.exit(0)
+              print(f"::error::{label} host {host} resolves to IPv6 only (no IPv4 A record). GitHub Actions runners lack IPv6 routing; switch Supabase to the IPv4 Session Pooler (aws-0-<region>.pooler.supabase.com:5432).", file=sys.stderr)
+              sys.exit(1)
+          '
+          }
+
+          verify_ipv4_endpoint "PRIMARY_URL" "$PRIMARY_URL"
+          verify_ipv4_endpoint "BACKUP_URL" "$BACKUP_URL"
+
           PRIMARY_BASE="${PRIMARY_URL%%\?*}"
           BACKUP_BASE="${BACKUP_URL%%\?*}"
           if [ "$PRIMARY_BASE" = "$BACKUP_BASE" ]; then
@@ -153,13 +189,15 @@ jobs:
           echo "Using $("$PG_DUMP_BIN" --version)"
           echo "Starting clean schema and data sync to secondary backup database..."
 
-          "$PG_DUMP_BIN" \
-            --clean \
-            --if-exists \
-            --no-owner \
-            --no-privileges \
-            "$PRIMARY_URL" \
-          | "$PSQL_BIN" \
+          {
+            printf 'SET statement_timeout = 0;\nSET lock_timeout = 0;\nSET idle_in_transaction_session_timeout = 0;\n'
+            "$PG_DUMP_BIN" \
+              --clean \
+              --if-exists \
+              --no-owner \
+              --no-privileges \
+              "$PRIMARY_URL"
+          } | "$PSQL_BIN" \
             --single-transaction \
             -v ON_ERROR_STOP=1 \
             "$BACKUP_URL"
