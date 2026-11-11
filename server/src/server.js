@@ -22,7 +22,7 @@ const startServer = async () => {
 
     app.listen(PORT, () => {
       console.log(`====================================================`);
-      console.log(` SGU Field Project Event Hub API Server running on port ${PORT}`);
+      console.log(` Eventify Event Hub API Server running on port ${PORT}`);
       console.log(` Health check: http://localhost:${PORT}/api/health`);
       console.log(` Admin Portal: http://localhost:5173/admin/login`);
       console.log(` Student Portal: http://localhost:5173/student/login`);

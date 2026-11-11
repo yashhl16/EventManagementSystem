@@ -1,6 +1,6 @@
-# SGU Field Project | Modern College Event Management & Campus Activity Platform
+# Eventify | Modern College Event Management & Campus Activity Platform
 
-A modern, responsive, full-stack **College Event Management System** designed for Sanjay Ghodawat University (SGU). SGU Field Project bridges students, student club coordinators, faculty event organizers, and central college administrators into a unified, secure campus platform.
+A modern, responsive, full-stack **College Event Management System** designed for Sanjay Ghodawat University (SGU). Eventify bridges students, student club coordinators, faculty event organizers, and central college administrators into a unified, secure campus platform.
 
 ---
 
@@ -21,7 +21,7 @@ A modern, responsive, full-stack **College Event Management System** designed fo
 ## System Architecture
 
 ```
-CampusPulse
+Eventify
 ├── client/                     # Frontend Application (React 18 + TypeScript + Vite + Tailwind CSS)
 │   ├── src/
 │   │   ├── components/         # Reusable UI widgets (EventCard, TicketPassModal, QRScannerModal, etc.)
@@ -71,7 +71,7 @@ NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 
 # Database configuration: Leave blank or set custom URI.
-# If MONGO_URI is omitted or unreachable, CampusPulse will automatically
+# If MONGO_URI is omitted or unreachable, Eventify will automatically
 # boot an in-memory database with pre-seeded college events.
 MONGO_URI=mongodb://127.0.0.1:27017/college_events
 
@@ -140,7 +140,7 @@ node test-flows.js
 
 ## Deployment to Vercel
 
-CampusPulse includes a production-ready `vercel.json` configuration at the repository root with Vite framework detection, automated client build commands, and single-page application (SPA) client-side routing rewrites.
+Eventify includes a production-ready `vercel.json` configuration at the repository root with Vite framework detection, automated client build commands, and single-page application (SPA) client-side routing rewrites.
 
 ### Option A: Connect via Vercel Web Dashboard (Recommended)
 
@@ -172,7 +172,7 @@ npx vercel --prod
 
 ## Automated Secondary Database Backup (Neon PostgreSQL)
 
-CampusPulse includes a GitHub Actions workflow at `.github/workflows/neon-db-backup.yml` that replicates the primary Neon PostgreSQL database (`DATABASE_URL`) into a dedicated secondary Neon backup project (`NEON_BACKUP_DATABASE_URL`) every day at `00:00 UTC` (with manual execution support via `workflow_dispatch`).
+Eventify includes a GitHub Actions workflow at `.github/workflows/neon-db-backup.yml` that replicates the primary Neon PostgreSQL database (`DATABASE_URL`) into a dedicated secondary Neon backup project (`NEON_BACKUP_DATABASE_URL`) every day at `00:00 UTC` (with manual execution support via `workflow_dispatch`).
 
 ### Pipeline Behavior
 
@@ -224,5 +224,5 @@ Use [scripts/setup-neon-backup.js](scripts/setup-neon-backup.js) to automaticall
 
 ## License
 
-CampusPulse is developed for higher education institutions and university campus councils.
+Eventify is developed for higher education institutions and university campus councils.
 

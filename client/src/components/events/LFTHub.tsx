@@ -746,7 +746,7 @@ export const LFTHub: React.FC<LFTHubProps> = ({
                     <option value="Email">College Email</option>
                     <option value="Discord">Discord</option>
                     <option value="Telegram">Telegram</option>
-                    <option value="In-App">In-App CampusPulse</option>
+                    <option value="In-App">In-App Eventify</option>
                   </select>
                 </div>
 

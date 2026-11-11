@@ -1,4 +1,4 @@
-export const SCHEMA_SQL = `-- Neon PostgreSQL Schema for CampusPulse College Event Management System
+export const SCHEMA_SQL = `-- Neon PostgreSQL Schema for Eventify College Event Management System
 
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY,

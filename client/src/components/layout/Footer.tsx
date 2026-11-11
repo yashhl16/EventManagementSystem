@@ -13,7 +13,7 @@ export const Footer: React.FC = () => {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white">
                 <Sparkles className="h-4 w-4" />
               </div>
-              <span className="font-bold text-slate-900 dark:text-white">SGU Field Project</span>
+              <span className="font-bold text-slate-900 dark:text-white">Eventify</span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               The modern college event management and campus engagement platform for Sanjay Ghodawat University. Discover hackathons, workshops, and student festivals.
@@ -85,7 +85,7 @@ export const Footer: React.FC = () => {
               Institutional Governance
             </h4>
             <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              SGU Field Project enforces role-based security, automated attendance QR validation, and auditable event moderation compliance.
+              Eventify enforces role-based security, automated attendance QR validation, and auditable event moderation compliance.
             </p>
             <div className="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
               <span>Made with</span>
@@ -96,7 +96,7 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="mt-8 border-t border-slate-100 pt-6 text-center text-xs text-slate-400 dark:border-slate-800">
-          © {new Date().getFullYear()} SGU Field Project | College Event Management System. All university rights reserved.
+          © {new Date().getFullYear()} Eventify | College Event Management System. All university rights reserved.
         </div>
       </div>
     </footer>

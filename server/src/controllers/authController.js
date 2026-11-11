@@ -255,7 +255,7 @@ export const loginStudent = async (req, res) => {
     await query('UPDATE users SET last_login = NOW() WHERE id = $1', [row.id]);
 
     const user = mapUser(row);
-    sendAuthResponse(user, 200, res, 'Welcome back to CampusPulse!');
+    sendAuthResponse(user, 200, res, 'Welcome back to Eventify!');
   } catch (error) {
     console.error('Error in loginStudent:', error);
     const isConnError = error.message?.includes('DATABASE_URL') || error.message?.includes('connection') || error.message?.includes('ECONNREFUSED');

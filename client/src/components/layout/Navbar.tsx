@@ -58,7 +58,7 @@ export const Navbar: React.FC<{ toggleSidebar?: () => void }> = ({ toggleSidebar
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-                SGU <span className="text-indigo-600 dark:text-indigo-400">Field Project</span>
+                Event<span className="text-indigo-600 dark:text-indigo-400">ify</span>
               </span>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                 College Event Portal

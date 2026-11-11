@@ -1,7 +1,7 @@
 {
-  "name": "sgu-field-project",
+  "name": "eventify",
   "version": "1.0.0",
-  "description": "SGU Field Project | College Event Management Platform",
+  "description": "Eventify | College Event Management Platform",
   "type": "module",
   "scripts": {
     "install:all": "npm --prefix server install && npm --prefix client install",

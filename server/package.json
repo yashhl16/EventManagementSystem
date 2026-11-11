@@ -1,7 +1,7 @@
 {
-  "name": "campus-pulse-server",
+  "name": "eventify-server",
   "version": "1.0.0",
-  "description": "Backend API for CampusPulse College Event Management System",
+  "description": "Backend API for Eventify College Event Management System",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
