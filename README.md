@@ -181,7 +181,32 @@ CampusPulse includes a GitHub Actions workflow at `.github/workflows/neon-db-bac
 - Streams schema, constraints, relations, data, and sequence states directly into `NEON_BACKUP_DATABASE_URL` inside a single atomic transaction (`psql --single-transaction -v ON_ERROR_STOP=1`).
 - Verifies that public tables, foreign key constraint counts, sequence values, and per-table row counts match between both Neon projects.
 
-### Setup Repository Secrets
+### Option 1: One-Command Automated Setup (Recommended)
+
+Use [scripts/setup-neon-backup.js](scripts/setup-neon-backup.js) to automatically provision a secondary Neon project named `event-system-backup-secondary`, retrieve its direct (non-pooled) connection string, and upload `NEON_BACKUP_DATABASE_URL` to GitHub repository secrets via the GitHub CLI (`gh`) or GitHub REST API (`libsodium-wrappers` sealed-box encryption).
+
+1. Install root dependencies once (required if using GitHub REST API fallback without `gh` CLI):
+   ```bash
+   npm install
+   ```
+2. Provide your **Neon API Key** (Neon Console -> Account Settings -> API Keys) and **GitHub Token** (`repo` / Actions secrets write permission — optional if `gh` CLI is already logged in) and run in a single command:
+
+   **macOS / Linux (Bash):**
+   ```bash
+   NEON_API_KEY="neon_api_key_here" GITHUB_TOKEN="github_pat_here" node scripts/setup-neon-backup.js
+   ```
+
+   **Windows (PowerShell):**
+   ```powershell
+   $env:NEON_API_KEY="neon_api_key_here"; $env:GITHUB_TOKEN="github_pat_here"; node scripts/setup-neon-backup.js
+   ```
+
+   *Optional flags:*
+   - `--dry-run` — Preview actions without provisioning a Neon project or modifying GitHub secrets.
+   - `--include-primary` — Also push your local `DATABASE_URL` environment variable to GitHub secret `DATABASE_URL`.
+   - `--region=<region_id>` / `--pg-version=<16|17>` / `--org-id=<neon_org_id>` — Customize Neon project provisioning options.
+
+### Option 2: Manual Setup Repository Secrets
 
 1. Create a **separate secondary Neon project** in the [Neon Console](https://console.neon.tech/) to store automated database backups.
 2. Copy its PostgreSQL connection string with SSL enabled (`?sslmode=require`; using a direct non-pooled Neon endpoint is recommended for `pg_dump`/`psql` operations).

@@ -13,7 +13,8 @@
     "start": "npm --prefix server start",
     "seed": "npm --prefix server run seed",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "backup:setup": "node scripts/setup-neon-backup.js"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "libsodium-wrappers": "^0.8.4",
     "prisma": "^5.10.0"
   }
 }
