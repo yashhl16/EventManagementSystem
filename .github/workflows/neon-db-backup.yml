@@ -22,23 +22,23 @@ jobs:
     steps:
       - name: Validate repository secrets
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEON_BACKUP_DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
+          PRIMARY_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
         run: |
           set -euo pipefail
 
-          if [ -z "${DATABASE_URL:-}" ]; then
+          if [ -z "${PRIMARY_URL:-}" ]; then
             echo "::error::Missing required repository secret DATABASE_URL."
             exit 1
           fi
 
-          if [ -z "${NEON_BACKUP_DATABASE_URL:-}" ]; then
+          if [ -z "${BACKUP_URL:-}" ]; then
             echo "::error::Missing required repository secret NEON_BACKUP_DATABASE_URL."
             exit 1
           fi
 
-          if [ "${DATABASE_URL}" = "${NEON_BACKUP_DATABASE_URL}" ]; then
-            echo "::error::NEON_BACKUP_DATABASE_URL must point to a secondary Neon database, not DATABASE_URL."
+          if [ "$PRIMARY_URL" = "$BACKUP_URL" ]; then
+            echo "::error::NEON_BACKUP_DATABASE_URL must point to a secondary database, not DATABASE_URL."
             exit 1
           fi
 
@@ -66,98 +66,129 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             postgresql-client ca-certificates curl
 
-      - name: Sync primary Neon PostgreSQL database to secondary backup and verify
+      - name: Sync primary Neon DB to secondary backup and verify
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEON_BACKUP_DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
+          PRIMARY_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
           PGSSLMODE: require
         run: |
           set -euo pipefail
 
-          ensure_sslmode() {
-            local url="$1"
-            if [[ "$url" == *"sslmode="* ]]; then
-              printf '%s' "$url"
-            elif [[ "$url" == *"?"* ]]; then
-              printf '%s&sslmode=require' "$url"
+          PYTHON_BIN=""
+          for candidate_py in python3 python; do
+            if command -v "$candidate_py" >/dev/null 2>&1 && "$candidate_py" -c "import urllib.parse" >/dev/null 2>&1; then
+              PYTHON_BIN="$candidate_py"
+              break
+            fi
+          done
+
+          # URL-encode unescaped special characters (such as '@' -> '%40') in passwords and ensure sslmode=require
+          sanitize_pg_uri() {
+            local raw="$1"
+            if [ -n "$PYTHON_BIN" ]; then
+              RAW_PG_URI="$raw" "$PYTHON_BIN" -c '
+          import os, re, urllib.parse
+          raw = os.environ.get("RAW_PG_URI", "").strip()
+          m = re.match(r"^(postgres(?:ql)?://)([^:@/?#]+):(.+)@([A-Za-z0-9.\[\]-]+(?::\d+)?(?:/[^?]*)?(?:\?.*)?)$", raw)
+          if m:
+              scheme, user, pw, tail = m.groups()
+              pw = re.sub(r"%(?![0-9A-Fa-f]{2})", "%25", pw)
+              safe_pw = "".join(ch if (ch.isalnum() or ch in "-._~%") else urllib.parse.quote(ch, safe="") for ch in pw)
+              url = f"{scheme}{user}:{safe_pw}@{tail}"
+          else:
+              url = raw
+          if "?" in url:
+              base, query = url.split("?", 1)
+              if not re.search(r"(^|&)sslmode=", query):
+                  url = f"{base}?{query}&sslmode=require" if query else f"{base}?sslmode=require"
+          else:
+              url = f"{url}?sslmode=require"
+          print(url, end="")
+          '
             else
-              printf '%s?sslmode=require' "$url"
+              if [[ "$raw" == *"sslmode="* ]]; then
+                printf '%s' "$raw"
+              elif [[ "$raw" == *"?"* ]]; then
+                printf '%s&sslmode=require' "$raw"
+              else
+                printf '%s?sslmode=require' "$raw"
+              fi
             fi
           }
 
-          PRIMARY_URL="$(ensure_sslmode "${DATABASE_URL}")"
-          BACKUP_URL="$(ensure_sslmode "${NEON_BACKUP_DATABASE_URL}")"
+          PRIMARY_URL="$(sanitize_pg_uri "$PRIMARY_URL")"
+          BACKUP_URL="$(sanitize_pg_uri "$BACKUP_URL")"
 
-          echo "::add-mask::${PRIMARY_URL}"
-          echo "::add-mask::${BACKUP_URL}"
+          echo "::add-mask::$PRIMARY_URL"
+          echo "::add-mask::$BACKUP_URL"
 
           PRIMARY_BASE="${PRIMARY_URL%%\?*}"
           BACKUP_BASE="${BACKUP_URL%%\?*}"
-          if [ "${PRIMARY_BASE}" = "${BACKUP_BASE}" ]; then
-            echo "::error::Primary and secondary Neon base connection endpoints cannot be identical."
+          if [ "$PRIMARY_BASE" = "$BACKUP_BASE" ]; then
+            echo "::error::Primary and secondary database endpoints cannot be identical."
             exit 1
           fi
 
           # Ensure pg_dump major version matches or exceeds the primary Neon PostgreSQL server version
           CLIENT_MAJOR="$(pg_dump --version | grep -oE '[0-9]+(\.[0-9]+)?' | head -n 1 | cut -d. -f1)"
-          SERVER_MAJOR="$(psql "${PRIMARY_URL}" -Atc "SELECT current_setting('server_version_num')::int / 10000;" | tr -d '[:space:]')"
+          SERVER_MAJOR="$(psql "$PRIMARY_URL" -Atc "SELECT current_setting('server_version_num')::int / 10000;" | tr -d '[:space:]')"
 
           PG_BIN_DIR=""
-          if [[ "${SERVER_MAJOR}" =~ ^[0-9]+$ ]] && [[ "${CLIENT_MAJOR}" =~ ^[0-9]+$ ]] && [ "${SERVER_MAJOR}" -gt "${CLIENT_MAJOR}" ]; then
-            echo "Detected PostgreSQL ${SERVER_MAJOR} on primary Neon server (installed client is ${CLIENT_MAJOR}); installing postgresql-client-${SERVER_MAJOR} via PGDG..."
+          if [[ "$SERVER_MAJOR" =~ ^[0-9]+$ ]] && [[ "$CLIENT_MAJOR" =~ ^[0-9]+$ ]] && [ "$SERVER_MAJOR" -gt "$CLIENT_MAJOR" ]; then
+            echo "Detected PostgreSQL $SERVER_MAJOR on primary server (installed client is $CLIENT_MAJOR); installing postgresql-client-$SERVER_MAJOR via PGDG..."
             . /etc/os-release
             sudo install -d -m 0755 /etc/apt/keyrings
             curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/keyrings/postgresql.asc >/dev/null
             echo "deb [signed-by=/etc/apt/keyrings/postgresql.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
               | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
             sudo apt-get update -o Dir::Etc::sourcelist="sources.list.d/pgdg.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0" -o Acquire::Retries=3
-            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "postgresql-client-${SERVER_MAJOR}" \
-              || (sudo apt-get update -o Acquire::Retries=3 && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "postgresql-client-${SERVER_MAJOR}")
-            PG_BIN_DIR="/usr/lib/postgresql/${SERVER_MAJOR}/bin/"
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "postgresql-client-$SERVER_MAJOR" \
+              || (sudo apt-get update -o Acquire::Retries=3 && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "postgresql-client-$SERVER_MAJOR")
+            PG_BIN_DIR="/usr/lib/postgresql/$SERVER_MAJOR/bin/"
           fi
 
           PG_DUMP_BIN="${PG_BIN_DIR}pg_dump"
           PSQL_BIN="${PG_BIN_DIR}psql"
 
-          echo "Using $("${PG_DUMP_BIN}" --version)"
-          echo "Starting clean schema and data sync to secondary Neon backup database..."
+          echo "Using $("$PG_DUMP_BIN" --version)"
+          echo "Starting clean schema and data sync to secondary backup database..."
 
-          "${PG_DUMP_BIN}" \
+          "$PG_DUMP_BIN" \
             --clean \
             --if-exists \
             --no-owner \
             --no-privileges \
-            "${PRIMARY_URL}" \
-          | "${PSQL_BIN}" \
+            "$PRIMARY_URL" \
+          | "$PSQL_BIN" \
             --single-transaction \
             -v ON_ERROR_STOP=1 \
-            "${BACKUP_URL}"
+            "$BACKUP_URL"
 
           echo "Database sync complete. Verifying tables, relations, row counts, and sequences..."
 
-          PRIMARY_TABLES="$("${PSQL_BIN}" "${PRIMARY_URL}" -Atc "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;")"
-          BACKUP_TABLES="$("${PSQL_BIN}" "${BACKUP_URL}" -Atc "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;")"
+          PRIMARY_TABLES="$("$PSQL_BIN" "$PRIMARY_URL" -Atc "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;")"
+          BACKUP_TABLES="$("$PSQL_BIN" "$BACKUP_URL" -Atc "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;")"
 
-          if [ "${PRIMARY_TABLES}" != "${BACKUP_TABLES}" ]; then
-            echo "::error::Synced table list mismatch between primary and secondary Neon databases."
-            diff -u <(printf '%s\n' "${PRIMARY_TABLES}") <(printf '%s\n' "${BACKUP_TABLES}") || true
+          if [ "$PRIMARY_TABLES" != "$BACKUP_TABLES" ]; then
+            echo "::error::Synced table list mismatch between primary and secondary databases."
+            diff -u <(printf '%s\n' "$PRIMARY_TABLES") <(printf '%s\n' "$BACKUP_TABLES") || true
             exit 1
           fi
 
-          PRIMARY_FK_COUNT="$("${PSQL_BIN}" "${PRIMARY_URL}" -Atc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_schema = 'public' AND constraint_type = 'FOREIGN KEY';")"
-          BACKUP_FK_COUNT="$("${PSQL_BIN}" "${BACKUP_URL}" -Atc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_schema = 'public' AND constraint_type = 'FOREIGN KEY';")"
+          PRIMARY_FK_COUNT="$("$PSQL_BIN" "$PRIMARY_URL" -Atc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_schema = 'public' AND constraint_type = 'FOREIGN KEY';")"
+          BACKUP_FK_COUNT="$("$PSQL_BIN" "$BACKUP_URL" -Atc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_schema = 'public' AND constraint_type = 'FOREIGN KEY';")"
 
-          if [ "${PRIMARY_FK_COUNT}" != "${BACKUP_FK_COUNT}" ]; then
-            echo "::error::Foreign key constraint mismatch (primary=${PRIMARY_FK_COUNT}, backup=${BACKUP_FK_COUNT})."
+          if [ "$PRIMARY_FK_COUNT" != "$BACKUP_FK_COUNT" ]; then
+            echo "::error::Foreign key constraint mismatch (primary=$PRIMARY_FK_COUNT, backup=$BACKUP_FK_COUNT)."
             exit 1
           fi
 
-          PRIMARY_SEQ_STATE="$("${PSQL_BIN}" "${PRIMARY_URL}" -Atc "SELECT sequencename || ':' || COALESCE(last_value::text, 'unused') || ':' || COALESCE(is_called::text, 'false') FROM pg_sequences WHERE schemaname = 'public' ORDER BY sequencename;")"
-          BACKUP_SEQ_STATE="$("${PSQL_BIN}" "${BACKUP_URL}" -Atc "SELECT sequencename || ':' || COALESCE(last_value::text, 'unused') || ':' || COALESCE(is_called::text, 'false') FROM pg_sequences WHERE schemaname = 'public' ORDER BY sequencename;")"
+          PRIMARY_SEQ_STATE="$("$PSQL_BIN" "$PRIMARY_URL" -Atc "SELECT sequencename || ':' || COALESCE(last_value::text, 'unused') || ':' || COALESCE(is_called::text, 'false') FROM pg_sequences WHERE schemaname = 'public' ORDER BY sequencename;")"
+          BACKUP_SEQ_STATE="$("$PSQL_BIN" "$BACKUP_URL" -Atc "SELECT sequencename || ':' || COALESCE(last_value::text, 'unused') || ':' || COALESCE(is_called::text, 'false') FROM pg_sequences WHERE schemaname = 'public' ORDER BY sequencename;")"
 
-          if [ "${PRIMARY_SEQ_STATE}" != "${BACKUP_SEQ_STATE}" ]; then
-            echo "::error::Sequence state mismatch between primary and secondary Neon databases."
-            diff -u <(printf '%s\n' "${PRIMARY_SEQ_STATE}") <(printf '%s\n' "${BACKUP_SEQ_STATE}") || true
+          if [ "$PRIMARY_SEQ_STATE" != "$BACKUP_SEQ_STATE" ]; then
+            echo "::error::Sequence state mismatch between primary and secondary databases."
+            diff -u <(printf '%s\n' "$PRIMARY_SEQ_STATE") <(printf '%s\n' "$BACKUP_SEQ_STATE") || true
             exit 1
           fi
 
@@ -168,14 +199,14 @@ jobs:
             WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
             ORDER BY table_name;
           "
-          PRIMARY_ROWS="$("${PSQL_BIN}" "${PRIMARY_URL}" -Atc "${ROW_COUNT_SQL}")"
-          BACKUP_ROWS="$("${PSQL_BIN}" "${BACKUP_URL}" -Atc "${ROW_COUNT_SQL}")"
+          PRIMARY_ROWS="$("$PSQL_BIN" "$PRIMARY_URL" -Atc "$ROW_COUNT_SQL")"
+          BACKUP_ROWS="$("$PSQL_BIN" "$BACKUP_URL" -Atc "$ROW_COUNT_SQL")"
 
-          if [ "${PRIMARY_ROWS}" != "${BACKUP_ROWS}" ]; then
-            echo "::error::Row count mismatch between primary and secondary Neon databases."
-            diff -u <(printf '%s\n' "${PRIMARY_ROWS}") <(printf '%s\n' "${BACKUP_ROWS}") || true
+          if [ "$PRIMARY_ROWS" != "$BACKUP_ROWS" ]; then
+            echo "::error::Row count mismatch between primary and secondary databases."
+            diff -u <(printf '%s\n' "$PRIMARY_ROWS") <(printf '%s\n' "$BACKUP_ROWS") || true
             exit 1
           fi
 
-          TABLE_TOTAL="$(printf '%s\n' "${BACKUP_TABLES}" | grep -c . || true)"
-          echo "Verification passed: ${TABLE_TOTAL} tables, ${BACKUP_FK_COUNT} foreign key relations, and sequence states match cleanly."
+          TABLE_TOTAL="$(printf '%s\n' "$BACKUP_TABLES" | grep -c . || true)"
+          echo "Verification passed: $TABLE_TOTAL tables, $BACKUP_FK_COUNT foreign key relations, and sequence states match cleanly."
