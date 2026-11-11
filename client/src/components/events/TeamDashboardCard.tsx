@@ -20,6 +20,7 @@ import {
 import { Team, Submission, User } from '../../types';
 import { teamService, submissionService } from '../../services/api';
 import { Button } from '../common/Button';
+import { handleDownloadOrView, resolveSubmissionFileName } from '../../utils/fileDownload';
 
 interface TeamDashboardCardProps {
   eventId: string;
@@ -418,16 +419,25 @@ export const TeamDashboardCard: React.FC<TeamDashboardCardProps> = ({
                   </div>
                 </div>
 
-                <a
-                  href={submission.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  download={submission.fileName || 'deliverable'}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-100 transition dark:bg-indigo-950 dark:text-indigo-300"
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDownloadOrView(
+                      submission.fileUrl,
+                      resolveSubmissionFileName(
+                        submission.fileName,
+                        submission.fileUrl,
+                        submission.fileType,
+                        submission.title || 'deliverable'
+                      ),
+                      submission.fileType
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-100 transition dark:bg-indigo-950 dark:text-indigo-300 cursor-pointer"
                 >
                   <span>View / Download File</span>
                   <ExternalLink className="h-3 w-3" />
-                </a>
+                </button>
               </div>
 
               {/* Optional Links */}

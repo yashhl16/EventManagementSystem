@@ -20,6 +20,7 @@ import { submissionService } from '../../services/api';
 import { Button } from '../common/Button';
 import { TableSkeleton } from '../common/LoadingSkeleton';
 import { EmptyState } from '../common/EmptyState';
+import { handleDownloadOrView, resolveSubmissionFileName } from '../../utils/fileDownload';
 
 export interface EventSubmissionsTabProps {
   eventId: string;
@@ -221,11 +222,15 @@ export const EventSubmissionsTab: React.FC<EventSubmissionsTabProps> = ({
       sub.team?.teamName ||
       ''
     ).toLowerCase();
-    const fileName = (
-      sub.fileName ||
-      (sub.fileUrl ? sub.fileUrl.split('/').pop()?.split('?')[0] : '') ||
-      ''
-    ).toLowerCase();
+    const searchableFileName =
+      sub.fileName || sub.fileUrl || sub.documentUrl
+        ? resolveSubmissionFileName(
+            sub.fileName,
+            sub.fileUrl || sub.documentUrl,
+            sub.fileType,
+            sub.title
+          ).toLowerCase()
+        : '';
 
     const matchesSearch =
       !q ||
@@ -236,14 +241,10 @@ export const EventSubmissionsTab: React.FC<EventSubmissionsTabProps> = ({
       title.includes(q) ||
       desc.includes(q) ||
       team.includes(q) ||
-      fileName.includes(q);
+      searchableFileName.includes(q);
 
     const fType = (sub.fileType || '').toLowerCase();
-    const fName = (
-      sub.fileName ||
-      (sub.fileUrl ? sub.fileUrl.split('/').pop()?.split('?')[0] : '') ||
-      ''
-    ).toLowerCase();
+    const fName = searchableFileName;
     let matchesType = true;
     if (fileTypeFilter === 'pptx') {
       matchesType =
@@ -521,12 +522,14 @@ export const EventSubmissionsTab: React.FC<EventSubmissionsTabProps> = ({
                     sub.roundNumber ||
                     sub.round?.roundNumber ||
                     null;
-                  const resolvedFileName =
-                    sub.fileName ||
-                    (sub.fileUrl ? sub.fileUrl.split('/').pop()?.split('?')[0] : '') ||
-                    'Deliverable file';
-                  const fileBadge = getFileBadge(sub.fileType, resolvedFileName);
                   const fileUrl = sub.fileUrl || sub.documentUrl || '';
+                  const resolvedFileName = resolveSubmissionFileName(
+                    sub.fileName,
+                    fileUrl,
+                    sub.fileType,
+                    sub.title || 'Deliverable file'
+                  );
+                  const fileBadge = getFileBadge(sub.fileType, resolvedFileName);
                   const hasExternal = !!sub.githubUrl || !!sub.figmaUrl;
                   const submittedTimestamp =
                     sub.submittedAt || sub.createdAt || sub.updatedAt;
@@ -617,16 +620,17 @@ export const EventSubmissionsTab: React.FC<EventSubmissionsTabProps> = ({
                             </p>
                           )}
                           {fileUrl && (
-                            <a
-                              href={fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 transition shadow-2xs"
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDownloadOrView(fileUrl, resolvedFileName, sub.fileType)
+                              }
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 transition shadow-2xs cursor-pointer"
                               title="Download or View Uploaded Deliverable"
                             >
                               <Download className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                               <span>View / Download</span>
-                            </a>
+                            </button>
                           )}
                         </div>
                       </td>
@@ -795,15 +799,27 @@ export const EventSubmissionsTab: React.FC<EventSubmissionsTabProps> = ({
                   </span>
                 </div>
                 {(previewSubmission.fileUrl || previewSubmission.documentUrl) && (
-                  <a
-                    href={previewSubmission.fileUrl || previewSubmission.documentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetUrl =
+                        previewSubmission.fileUrl || previewSubmission.documentUrl;
+                      handleDownloadOrView(
+                        targetUrl,
+                        resolveSubmissionFileName(
+                          previewSubmission.fileName,
+                          targetUrl,
+                          previewSubmission.fileType,
+                          previewSubmission.title
+                        ),
+                        previewSubmission.fileType
+                      );
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition cursor-pointer"
                   >
                     <Download className="h-3.5 w-3.5" />
                     <span>Open Deliverable</span>
-                  </a>
+                  </button>
                 )}
               </div>
             </div>

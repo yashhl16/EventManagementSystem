@@ -18,6 +18,7 @@ import {
 import { Submission, EventRound } from '../../types';
 import { submissionService } from '../../services/api';
 import { Button } from '../common/Button';
+import { handleDownloadOrView, resolveSubmissionFileName } from '../../utils/fileDownload';
 
 interface EventSubmissionCardProps {
   eventId: string;
@@ -277,16 +278,27 @@ export const EventSubmissionCard: React.FC<EventSubmissionCardProps> = ({
                 </div>
               </div>
 
-              {submission.fileUrl && (
-                <a
-                  href={submission.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition"
+              {(submission.fileUrl || submission.documentUrl) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetUrl = submission.fileUrl || submission.documentUrl;
+                    handleDownloadOrView(
+                      targetUrl,
+                      resolveSubmissionFileName(
+                        submission.fileName,
+                        targetUrl,
+                        submission.fileType,
+                        submission.title
+                      ),
+                      submission.fileType
+                    );
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition cursor-pointer"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   View Deliverable
-                </a>
+                </button>
               )}
             </div>
 
