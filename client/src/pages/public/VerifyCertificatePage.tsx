@@ -74,7 +74,7 @@ export const VerifyCertificatePage: React.FC = () => {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
             <ShieldCheck className="h-7 w-7" />
           </div>
-          <h1 className="mt-4 text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-[-0.025em] text-zinc-900 dark:text-zinc-100">
             Public Certificate Verification
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">

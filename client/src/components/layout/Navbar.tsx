@@ -70,10 +70,10 @@ export const Navbar: React.FC<{ toggleSidebar?: () => void }> = ({ toggleSidebar
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              <span className="text-lg font-semibold tracking-[-0.025em] text-zinc-900 dark:text-zinc-100">
                 Event<span className="text-indigo-500 dark:text-indigo-400 font-bold">ify</span>
               </span>
-              <span className="hidden sm:inline-flex items-center rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              <span className="hidden sm:inline-flex items-center rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400">
                 OS
               </span>
             </div>

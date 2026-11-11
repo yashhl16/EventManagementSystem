@@ -46,18 +46,18 @@ export const Hero: React.FC<HeroProps> = ({ stats }) => {
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
         {/* Top Announcement Pill */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3.5 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 backdrop-blur-sm">
+        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3.5 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 backdrop-blur-sm">
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
-          <span>Eventify OS • Modern Campus Event Infrastructure</span>
+          <span>Eventify OS // 2026</span>
         </div>
 
         {/* Gradient Headline */}
-        <h1 className="mx-auto mt-6 max-w-4xl bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-500 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-6xl lg:text-7xl leading-[1.08]">
+        <h1 className="mx-auto mt-6 max-w-4xl bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-500 bg-clip-text text-4xl font-bold tracking-[-0.035em] text-transparent sm:text-6xl lg:text-[4.25rem] leading-[1.06]">
           Manage your events smoothly.
         </h1>
 
         {/* Clear Platform Subtitle */}
-        <p className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-base">
+        <p className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-base font-normal">
           Eventify is the unified event operations platform for teams, clubs, and universities.
           Launch hackathon registrations, coordinate rounds and deliverables, verify QR entry
           passes at the door, and issue cryptographically verifiable certificates in seconds.
@@ -94,41 +94,41 @@ export const Hero: React.FC<HeroProps> = ({ stats }) => {
         {/* High-Contrast Live Metrics Bar */}
         <div className="mx-auto mt-14 grid max-w-4xl grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
           <div className="rounded-xl border border-zinc-200/80 bg-white/70 p-4 text-left backdrop-blur-sm dark:border-zinc-800/80 dark:bg-zinc-900/50">
-            <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.06em] text-zinc-500 dark:text-zinc-400">
               <span>Active Students</span>
               <Users className="h-3.5 w-3.5 text-indigo-400" />
             </div>
-            <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            <p className="mt-2 font-mono text-2xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-100">
               {stats.activeStudents.toLocaleString()}
             </p>
           </div>
 
           <div className="rounded-xl border border-zinc-200/80 bg-white/70 p-4 text-left backdrop-blur-sm dark:border-zinc-800/80 dark:bg-zinc-900/50">
-            <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.06em] text-zinc-500 dark:text-zinc-400">
               <span>Live Events</span>
               <Calendar className="h-3.5 w-3.5 text-indigo-400" />
             </div>
-            <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">
+            <p className="mt-2 font-mono text-2xl font-semibold tabular-nums tracking-tight text-indigo-600 dark:text-indigo-400">
               {stats.totalEvents.toLocaleString()}
             </p>
           </div>
 
           <div className="rounded-xl border border-zinc-200/80 bg-white/70 p-4 text-left backdrop-blur-sm dark:border-zinc-800/80 dark:bg-zinc-900/50">
-            <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.06em] text-zinc-500 dark:text-zinc-400">
               <span>Registrations</span>
               <CheckCircle2 className="h-3.5 w-3.5 text-violet-400" />
             </div>
-            <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-violet-600 dark:text-violet-400">
+            <p className="mt-2 font-mono text-2xl font-semibold tabular-nums tracking-tight text-violet-600 dark:text-violet-400">
               {stats.totalRegistrations.toLocaleString()}
             </p>
           </div>
 
           <div className="rounded-xl border border-zinc-200/80 bg-white/70 p-4 text-left backdrop-blur-sm dark:border-zinc-800/80 dark:bg-zinc-900/50">
-            <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.06em] text-zinc-500 dark:text-zinc-400">
               <span>Certificates</span>
               <Award className="h-3.5 w-3.5 text-emerald-400" />
             </div>
-            <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+            <p className="mt-2 font-mono text-2xl font-semibold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">
               {stats.certificatesIssued.toLocaleString()}
             </p>
           </div>

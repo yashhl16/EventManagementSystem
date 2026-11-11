@@ -75,14 +75,14 @@ export const ExploreEventsPage: React.FC = () => {
 
       <main className="relative z-10 flex-1 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12 w-full space-y-6">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] font-medium text-indigo-600 dark:text-indigo-400">
             <Compass className="h-3.5 w-3.5" />
-            <span>Campus Discovery</span>
+            <span>Catalog // Discovery</span>
           </div>
-          <h1 className="mt-3 text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="mt-3 text-2xl sm:text-4xl font-bold tracking-[-0.03em] text-zinc-900 dark:text-zinc-100">
             Explore All Events
           </h1>
-          <p className="mt-1.5 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="mt-1.5 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
             Find technical hackathons, guest lectures, workshops, cultural fests, and athletic competitions.
           </p>
         </div>

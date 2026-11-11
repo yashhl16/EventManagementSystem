@@ -32,13 +32,13 @@ export const StatCard: React.FC<StatCardProps> = ({
   return (
     <div className="rounded-xl border border-zinc-200/80 bg-white p-5 transition-all duration-300 hover:border-indigo-500/40 dark:border-zinc-800/80 dark:bg-zinc-900/50 dark:hover:border-indigo-500/40">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.06em] font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${colorMap[color]}`}>
           {icon}
         </div>
       </div>
       <div className="mt-3">
-        <h3 className="font-mono text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h3 className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-100">
           {value}
         </h3>
         {subtitle && (

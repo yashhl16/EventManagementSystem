@@ -70,11 +70,11 @@ export const LandingPage: React.FC = () => {
         <section className="py-16 sm:py-20 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] font-medium text-indigo-600 dark:text-indigo-400">
                 <TrendingUp className="h-3.5 w-3.5" />
-                <span>Campus Buzz</span>
+                <span>Featured // Live Feed</span>
               </div>
-              <h2 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.025em] text-zinc-900 dark:text-zinc-100 sm:text-3xl">
                 Featured & Trending Activities
               </h2>
             </div>
@@ -113,13 +113,13 @@ export const LandingPage: React.FC = () => {
         <section className="py-16 sm:py-20 border-y border-zinc-200/80 bg-zinc-100/60 dark:border-zinc-800/80 dark:bg-zinc-900/30">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto">
-              <span className="inline-flex items-center rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+              <span className="inline-flex items-center rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] font-medium text-indigo-600 dark:text-indigo-400">
                 Platform Architecture
               </span>
-              <h2 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
+              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.025em] text-zinc-900 dark:text-zinc-100 sm:text-3xl">
                 Built for High-Velocity Event Teams
               </h2>
-              <p className="mt-2 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="mt-2 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
                 A unified developer-grade stack engineered for students, club faculty advisors, and administrators.
               </p>
             </div>

@@ -66,12 +66,12 @@ export const EventCard: React.FC<EventCardProps> = ({
 
         {/* Top Badges on Banner */}
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
-          <span className="bg-zinc-950/75 backdrop-blur-md text-indigo-400 border border-indigo-500/30 text-xs font-medium px-2.5 py-1 rounded-full">
+          <span className="bg-zinc-950/75 backdrop-blur-md font-mono text-indigo-400 border border-indigo-500/30 text-[11px] font-medium px-2.5 py-1 rounded-full">
             {event.category}
           </span>
           <EventLifecycleBadge event={event} />
           {event.isTeamEvent && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700/80 bg-zinc-950/80 px-2.5 py-1 text-xs font-medium text-zinc-200 backdrop-blur-md">
+            <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700/80 bg-zinc-950/80 px-2.5 py-1 font-mono text-[11px] font-medium text-zinc-200 backdrop-blur-md">
               <Users className="h-3 w-3 text-indigo-400" />
               Team {event.teamMinSize}-{event.teamMaxSize}
             </span>
@@ -81,7 +81,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* Pricing Badge */}
         <div className="absolute right-3 top-3">
           <span
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-md border ${
+            className={`rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold tabular-nums backdrop-blur-md border ${
               event.isPaid
                 ? 'border-amber-500/30 bg-amber-500/15 text-amber-300'
                 : 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
@@ -92,7 +92,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         </div>
 
         {/* Bottom Time Overlay */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs font-medium text-zinc-200">
+        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 font-mono text-[11px] font-medium tabular-nums text-zinc-200">
           <Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
           <span>
             {event.startTime}
@@ -105,7 +105,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       <div className="flex flex-1 flex-col p-5">
         <div className="flex-1">
           <Link to={`/events/${event._id}`}>
-            <h3 className="line-clamp-2 text-base font-bold tracking-tight text-zinc-900 transition-colors group-hover:text-indigo-600 dark:text-zinc-100 dark:group-hover:text-indigo-400">
+            <h3 className="line-clamp-2 text-base font-semibold tracking-[-0.02em] text-zinc-900 transition-colors group-hover:text-indigo-600 dark:text-zinc-100 dark:group-hover:text-indigo-400">
               {event.title}
             </h3>
           </Link>
@@ -116,7 +116,7 @@ export const EventCard: React.FC<EventCardProps> = ({
 
         {/* Compact Metadata Pill Badges for Date & Location */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs px-2.5 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 font-mono text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[11px] px-2.5 py-1 rounded-full tabular-nums">
             <Calendar className="h-3 w-3 shrink-0" />
             <span>{formattedDate}</span>
           </span>
