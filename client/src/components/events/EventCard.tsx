@@ -6,12 +6,11 @@ import {
   MapPin,
   Users,
   Video,
-  Ticket,
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
 import { CollegeEvent } from '../../types';
-import { CategoryBadge, StatusBadge, EventLifecycleBadge } from '../common/Badge';
+import { EventLifecycleBadge } from '../common/Badge';
 import { calculateEventStatus } from '../../utils/eventStatus';
 
 interface EventCardProps {
@@ -43,18 +42,18 @@ export const EventCard: React.FC<EventCardProps> = ({
   const isOngoing = lifecycleStatus === 'Ongoing';
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-all duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
+    <div className="group relative flex flex-col bg-white dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800/80 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all duration-300 rounded-xl overflow-hidden hover:-translate-y-0.5 hover:shadow-[0_0_25px_rgba(99,102,241,0.12)]">
       {/* AI Recommendation Banner if present */}
       {recommendationReason && (
-        <div className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 px-3.5 py-1 text-[11px] font-semibold text-white">
+        <div className="flex items-center gap-1.5 border-b border-indigo-500/20 bg-gradient-to-r from-indigo-600 to-violet-600 px-3.5 py-1.5 text-[11px] font-semibold text-white">
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{recommendationReason}</span>
-          {matchScore && <span className="ml-auto font-bold opacity-90">{matchScore}% Match</span>}
+          {matchScore && <span className="ml-auto font-mono font-bold opacity-90">{matchScore}% Match</span>}
         </div>
       )}
 
-      {/* Banner Image */}
-      <div className="relative h-44 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+      {/* Aspect-Ratio Locked Banner Image with Dark Gradient Overlay */}
+      <div className="relative aspect-video w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
         <img
           src={
             event.bannerImage ||
@@ -63,38 +62,42 @@ export const EventCard: React.FC<EventCardProps> = ({
           alt={event.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/35 to-transparent" />
 
-        {/* Badges on Banner */}
+        {/* Top Badges on Banner */}
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
-          <CategoryBadge category={event.category} />
+          <span className="bg-zinc-950/75 backdrop-blur-md text-indigo-400 border border-indigo-500/30 text-xs font-medium px-2.5 py-1 rounded-full">
+            {event.category}
+          </span>
           <EventLifecycleBadge event={event} />
           {event.isTeamEvent && (
-            <span className="rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-              Team of {event.teamMinSize}-{event.teamMaxSize}
+            <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700/80 bg-zinc-950/80 px-2.5 py-1 text-xs font-medium text-zinc-200 backdrop-blur-md">
+              <Users className="h-3 w-3 text-indigo-400" />
+              Team {event.teamMinSize}-{event.teamMaxSize}
             </span>
           )}
         </div>
 
+        {/* Pricing Badge */}
         <div className="absolute right-3 top-3">
           <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-bold backdrop-blur-md ${
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-md border ${
               event.isPaid
-                ? 'bg-amber-500/90 text-white'
-                : 'bg-emerald-500/90 text-white'
+                ? 'border-amber-500/30 bg-amber-500/15 text-amber-300'
+                : 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
             }`}
           >
             {event.isPaid ? `$${event.ticketPrice}` : 'FREE'}
           </span>
         </div>
 
-        {/* Date overlay */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs font-medium text-white">
-          <Calendar className="h-3.5 w-3.5" />
-          <span>{formattedDate}</span>
-          <span>•</span>
-          <Clock className="h-3.5 w-3.5" />
-          <span>{event.startTime}{event.endTime ? ` - ${event.endTime}` : ''}</span>
+        {/* Bottom Time Overlay */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs font-medium text-zinc-200">
+          <Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+          <span>
+            {event.startTime}
+            {event.endTime ? ` - ${event.endTime}` : ''}
+          </span>
         </div>
       </div>
 
@@ -102,38 +105,54 @@ export const EventCard: React.FC<EventCardProps> = ({
       <div className="flex flex-1 flex-col p-5">
         <div className="flex-1">
           <Link to={`/events/${event._id}`}>
-            <h3 className="line-clamp-2 text-base font-bold text-slate-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
+            <h3 className="line-clamp-2 text-base font-bold tracking-tight text-zinc-900 transition-colors group-hover:text-indigo-600 dark:text-zinc-100 dark:group-hover:text-indigo-400">
               {event.title}
             </h3>
           </Link>
-          <p className="mt-2 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
             {event.description}
           </p>
         </div>
 
-        {/* Venue & Organizer Info */}
-        <div className="mt-4 space-y-1.5 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-          <div className="flex items-center gap-1.5 truncate">
+        {/* Compact Metadata Pill Badges for Date & Location */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs px-2.5 py-1 rounded-full">
+            <Calendar className="h-3 w-3 shrink-0" />
+            <span>{formattedDate}</span>
+          </span>
+          <span className="inline-flex max-w-full items-center gap-1.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs px-2.5 py-1 rounded-full truncate">
             {event.venueType === 'online' ? (
-              <Video className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+              <Video className="h-3 w-3 shrink-0" />
             ) : (
-              <MapPin className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+              <MapPin className="h-3 w-3 shrink-0" />
             )}
             <span className="truncate">{event.venue}</span>
-          </div>
+          </span>
+        </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-400">
-            <span>By {event.organizerName || 'Campus Council'}</span>
-            <span className={isFull ? 'font-bold text-amber-600 dark:text-amber-400' : ''}>
+        {/* Organizer & Seat Availability Progress */}
+        <div className="mt-4 space-y-2 border-t border-zinc-100 pt-3.5 text-xs text-zinc-500 dark:border-zinc-800/80 dark:text-zinc-400">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="truncate text-zinc-500 dark:text-zinc-400">
+              By <span className="font-medium text-zinc-700 dark:text-zinc-300">{event.organizerName || 'Campus Council'}</span>
+            </span>
+            <span
+              className={
+                isFull
+                  ? 'font-semibold text-amber-600 dark:text-amber-400 shrink-0'
+                  : 'font-mono text-zinc-600 dark:text-zinc-300 shrink-0'
+              }
+            >
               {isFull ? 'Waitlist Open' : `${availableSeats} seats left`}
             </span>
           </div>
 
-          {/* Seat Capacity Bar */}
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
-                capacityPercent > 85 ? 'bg-amber-500' : 'bg-indigo-600 dark:bg-indigo-500'
+                capacityPercent > 85
+                  ? 'bg-amber-500'
+                  : 'bg-gradient-to-r from-indigo-500 to-violet-500'
               }`}
               style={{ width: `${capacityPercent}%` }}
             />
@@ -141,10 +160,10 @@ export const EventCard: React.FC<EventCardProps> = ({
         </div>
 
         {/* Action Button */}
-        <div className="mt-4 pt-1">
+        <div className="mt-4">
           <Link
             to={`/events/${event._id}`}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-800 transition-colors hover:bg-indigo-600 hover:text-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-indigo-600 dark:hover:text-white"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-100 py-2.5 text-xs font-semibold text-zinc-800 transition-all hover:border-indigo-500 hover:bg-indigo-600 hover:text-white dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-indigo-500 dark:hover:bg-indigo-600 dark:hover:text-white"
           >
             <span>
               {isCompleted

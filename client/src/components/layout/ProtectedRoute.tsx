@@ -18,10 +18,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="flex h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-          <p className="text-sm font-medium text-slate-500">Authenticating session...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+            Authenticating session...
+          </p>
         </div>
       </div>
     );

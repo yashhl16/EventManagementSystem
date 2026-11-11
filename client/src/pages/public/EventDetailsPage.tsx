@@ -211,10 +211,10 @@ export const EventDetailsPage: React.FC = () => {
 
   if (isLoading || !event) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-xs text-slate-400">Loading event information...</p>
+          <p className="text-xs text-zinc-400">Loading event information...</p>
         </div>
       </div>
     );
@@ -230,15 +230,19 @@ export const EventDetailsPage: React.FC = () => {
   const organizer: any = event.organizer;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+    <div className="relative min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 flex flex-col">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.12),rgba(255,255,255,0))]"
+      />
       <Navbar />
 
-      <main className="flex-1 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+      <main className="relative z-10 flex-1 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
         {/* Back Link */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <Link
             to="/events"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-indigo-500 dark:text-zinc-400 dark:hover:text-indigo-400 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Events Catalog
@@ -248,13 +252,13 @@ export const EventDetailsPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <Link
                 to={`/organizer/events/${event._id || event.id}`}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
+                className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 transition"
               >
                 Attendees Roster
               </Link>
               <Link
                 to={`/organizer/events/${event._id || event.id}/submissions`}
-                className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition flex items-center gap-1.5 shadow-xs"
+                className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)] transition flex items-center gap-1.5"
               >
                 <FileText className="h-3.5 w-3.5" />
                 <span>Submissions Tab</span>
@@ -264,13 +268,13 @@ export const EventDetailsPage: React.FC = () => {
         </div>
 
         {/* Hero Banner Card */}
-        <div className="relative h-64 sm:h-96 w-full overflow-hidden rounded-3xl bg-slate-900 shadow-xl">
+        <div className="relative h-64 sm:h-96 w-full overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950 shadow-2xl">
           <img
             src={event.bannerImage}
             alt={event.title}
             className="h-full w-full object-cover opacity-80"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent" />
 
           {/* Badges on Top */}
           <div className="absolute top-6 left-6 flex flex-wrap items-center gap-2">

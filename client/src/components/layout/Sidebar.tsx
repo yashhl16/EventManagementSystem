@@ -53,14 +53,16 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
   const links = role === 'admin' ? adminLinks : role === 'organizer' ? organizerLinks : studentLinks;
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <aside className="flex h-full w-64 flex-col border-r border-zinc-200/80 bg-white p-4 dark:border-zinc-800/80 dark:bg-zinc-950/90">
       {/* Brand & Role Tag */}
-      <div className="flex items-center gap-3 px-2 py-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-none">
-          <Sparkles className="h-5 w-5" />
+      <div className="flex items-center gap-3 px-2 py-3 border-b border-zinc-200/80 dark:border-zinc-800/80">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-400/30 bg-indigo-600 text-white shadow-[0_0_12px_rgba(99,102,241,0.3)]">
+          <Sparkles className="h-4 w-4" />
         </div>
         <div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">Eventify</h2>
+          <h2 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Event<span className="text-indigo-500 dark:text-indigo-400">ify</span>
+          </h2>
           <div className="mt-0.5">
             <Badge
               variant={role === 'admin' ? 'purple' : role === 'organizer' ? 'primary' : 'success'}
@@ -73,7 +75,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
       </div>
 
       {/* Navigation Links */}
-      <nav className="mt-6 flex-1 space-y-1.5 overflow-y-auto">
+      <nav className="mt-6 flex-1 space-y-1 overflow-y-auto">
         {links.map((link) => {
           const Icon = link.icon;
           return (
@@ -82,14 +84,14 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
               to={link.to}
               onClick={onCloseMobile}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
+                `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all ${
                   isActive
-                    ? 'bg-indigo-50 text-indigo-600 shadow-sm shadow-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200'
+                    ? 'bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-800 dark:shadow-[0_0_15px_rgba(99,102,241,0.08)] font-semibold'
+                    : 'border border-transparent text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-200'
                 }`
               }
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              <Icon className="h-4 w-4 shrink-0 text-indigo-500 dark:text-indigo-400" />
               <span>{link.label}</span>
             </NavLink>
           );
@@ -97,23 +99,23 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
       </nav>
 
       {/* User profile card & logout */}
-      <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
-        <div className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/50">
+      <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800/80">
+        <div className="flex items-center justify-between rounded-xl border border-zinc-200/80 bg-zinc-50 p-2.5 dark:border-zinc-800/80 dark:bg-zinc-900/60">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <img
               src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'}
               alt={user?.name}
-              className="h-8 w-8 rounded-full object-cover shrink-0"
+              className="h-8 w-8 rounded-full object-cover shrink-0 ring-1 ring-zinc-700/50"
             />
             <div className="truncate">
-              <p className="truncate text-xs font-bold text-slate-900 dark:text-white">{user?.name}</p>
-              <p className="truncate text-[10px] text-slate-400">{user?.email}</p>
+              <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">{user?.name}</p>
+              <p className="truncate text-[10px] text-zinc-500 dark:text-zinc-400">{user?.email}</p>
             </div>
           </div>
           <button
             onClick={logout}
             title="Sign Out"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-rose-600 dark:hover:bg-slate-700 dark:hover:text-rose-400"
+            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-rose-600 dark:hover:bg-zinc-800 dark:hover:text-rose-400"
           >
             <LogOut className="h-4 w-4" />
           </button>

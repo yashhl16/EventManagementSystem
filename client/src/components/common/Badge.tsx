@@ -24,28 +24,28 @@ export const Badge: React.FC<BadgeProps> = ({
   className = '',
 }) => {
   const sizeStyles = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-xs font-semibold',
+    sm: 'px-2.5 py-0.5 text-[11px] font-medium',
+    md: 'px-2.5 py-1 text-xs font-medium',
     lg: 'px-3.5 py-1.5 text-sm font-semibold',
   };
 
   const variantStyles = {
     primary:
-      'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800',
+      'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20',
     secondary:
-      'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+      'bg-zinc-100 text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/80',
     success:
-      'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50',
+      'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20',
     warning:
-      'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
+      'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20',
     danger:
-      'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800',
+      'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20',
     info:
-      'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800',
+      'bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/20',
     purple:
-      'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800',
+      'bg-violet-500/10 text-violet-700 dark:text-violet-400 border border-violet-500/20',
     outline:
-      'bg-transparent text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700',
+      'bg-transparent text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700',
   };
 
   return (
@@ -87,8 +87,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const normalized = (status || '').toLowerCase().trim();
 
   const sizeStyles = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-xs font-semibold',
+    sm: 'px-2.5 py-0.5 text-[11px] font-medium',
+    md: 'px-2.5 py-1 text-xs font-medium',
     lg: 'px-3.5 py-1.5 text-sm font-semibold',
   };
 
@@ -96,50 +96,30 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   switch (normalized) {
     case 'approved':
-      return (
-        <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 ${sizeStyles[size]} ${className}`}
-        >
-          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-emerald-500 dark:bg-emerald-400`} />
-          <span className="leading-none">Approved</span>
-        </span>
-      );
-
     case 'registered':
-      return (
-        <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 ${sizeStyles[size]} ${className}`}
-        >
-          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-emerald-500 dark:bg-emerald-400`} />
-          <span className="leading-none">Registered</span>
-        </span>
-      );
-
     case 'attended':
+    case 'valid': {
+      const labelMap: Record<string, string> = {
+        approved: 'Approved',
+        registered: 'Registered',
+        attended: 'Attended',
+        valid: 'Valid',
+      };
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 ${sizeStyles[size]} ${className}`}
         >
           <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-emerald-500 dark:bg-emerald-400`} />
-          <span className="leading-none">Attended</span>
+          <span className="leading-none">{labelMap[normalized]}</span>
         </span>
       );
-
-    case 'valid':
-      return (
-        <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 ${sizeStyles[size]} ${className}`}
-        >
-          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-emerald-500 dark:bg-emerald-400`} />
-          <span className="leading-none">Valid</span>
-        </span>
-      );
+    }
 
     case 'pending_approval':
     case 'pending':
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 ${sizeStyles[size]} ${className}`}
         >
           <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-amber-500 dark:bg-amber-400`} />
           <span className="leading-none">Pending Approval</span>
@@ -149,7 +129,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     case 'waitlisted':
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/20 ${sizeStyles[size]} ${className}`}
         >
           <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-sky-500 dark:bg-sky-400`} />
           <span className="leading-none">Waitlisted</span>
@@ -157,31 +137,22 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       );
 
     case 'rejected':
-      return (
-        <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50 ${sizeStyles[size]} ${className}`}
-        >
-          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-rose-500 dark:bg-rose-400`} />
-          <span className="leading-none">Rejected</span>
-        </span>
-      );
-
     case 'cancelled':
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 ${sizeStyles[size]} ${className}`}
         >
           <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-rose-500 dark:bg-rose-400`} />
-          <span className="leading-none">Cancelled</span>
+          <span className="leading-none">{normalized === 'rejected' ? 'Rejected' : 'Cancelled'}</span>
         </span>
       );
 
     case 'completed':
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300 border border-slate-200 dark:border-slate-700 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 border border-zinc-500/20 ${sizeStyles[size]} ${className}`}
         >
-          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-slate-400 dark:bg-slate-500`} />
+          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-zinc-400 dark:bg-zinc-500`} />
           <span className="leading-none">Completed</span>
         </span>
       );
@@ -190,9 +161,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       const formatted = status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ') : 'Unknown';
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300 border border-slate-200 dark:border-slate-700 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 border border-zinc-500/20 ${sizeStyles[size]} ${className}`}
         >
-          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-slate-400 dark:bg-slate-500`} />
+          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-zinc-400 dark:bg-zinc-500`} />
           <span className="leading-none">{formatted}</span>
         </span>
       );
@@ -209,7 +180,7 @@ export const EventLifecycleBadge: React.FC<{
   const currentStatus = (status || (event ? calculateEventStatus(event) : 'Upcoming')).toLowerCase();
 
   const sizeStyles = {
-    sm: 'px-2.5 py-0.5 text-[11px]',
+    sm: 'px-2.5 py-1 text-xs font-medium',
     md: 'px-3 py-1 text-xs font-semibold',
     lg: 'px-3.5 py-1.5 text-sm font-semibold',
   };
@@ -220,7 +191,7 @@ export const EventLifecycleBadge: React.FC<{
     case 'ongoing':
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full border border-sky-300 bg-sky-100 font-bold text-sky-800 shadow-sm backdrop-blur-md dark:border-sky-700/60 dark:bg-sky-950/80 dark:text-sky-300 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full border border-sky-500/30 bg-zinc-950/75 font-semibold text-sky-300 shadow-sm backdrop-blur-md ${sizeStyles[size]} ${className}`}
         >
           <span className="relative flex h-2 w-2 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75"></span>
@@ -232,9 +203,9 @@ export const EventLifecycleBadge: React.FC<{
     case 'completed':
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full border border-slate-300 bg-slate-100/90 font-medium text-slate-700 shadow-sm backdrop-blur-md dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full border border-zinc-700/80 bg-zinc-950/75 font-medium text-zinc-300 shadow-sm backdrop-blur-md ${sizeStyles[size]} ${className}`}
         >
-          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-slate-400 dark:bg-slate-500`}></span>
+          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-zinc-400`}></span>
           <span className="leading-none">Completed</span>
         </span>
       );
@@ -242,9 +213,9 @@ export const EventLifecycleBadge: React.FC<{
     default:
       return (
         <span
-          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full border border-emerald-300 bg-emerald-100 font-bold text-emerald-800 shadow-sm backdrop-blur-md dark:border-emerald-700/60 dark:bg-emerald-950/80 dark:text-emerald-300 ${sizeStyles[size]} ${className}`}
+          className={`inline-flex items-center justify-center gap-1.5 align-middle leading-none rounded-full border border-emerald-500/30 bg-zinc-950/75 font-semibold text-emerald-300 shadow-sm backdrop-blur-md ${sizeStyles[size]} ${className}`}
         >
-          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-emerald-500 dark:bg-emerald-400`}></span>
+          <span className={`inline-block shrink-0 rounded-full ${dotSize} bg-emerald-400`}></span>
           <span className="leading-none">Upcoming</span>
         </span>
       );

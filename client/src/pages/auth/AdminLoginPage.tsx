@@ -7,8 +7,6 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  CheckCircle2,
-  Sparkles,
   ArrowRight,
   Server,
 } from 'lucide-react';
@@ -65,38 +63,41 @@ export const AdminLoginPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-slate-900 py-12 sm:px-6 lg:px-8 text-white relative overflow-hidden">
+    <div className="flex min-h-screen flex-col justify-center bg-zinc-950 py-12 sm:px-6 lg:px-8 text-zinc-100 relative overflow-hidden">
       {/* Background ambient lighting */}
-      <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
-      <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.18),rgba(255,255,255,0))]"
+      />
+      <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl pointer-events-none" />
 
-      {/* Top Bar with theme and back link */}
-      <div className="absolute top-6 right-6 flex items-center gap-3">
-        <ThemeToggle className="border-slate-800 bg-slate-800/80 text-slate-300" />
+      {/* Top Bar with theme */}
+      <div className="absolute top-6 right-6 flex items-center gap-3 z-10">
+        <ThemeToggle className="border-zinc-800 bg-zinc-900 text-zinc-300" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4">
         {/* Institutional Crest */}
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-xl shadow-indigo-500/25 border border-indigo-400/30">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 shadow-[0_0_24px_rgba(99,102,241,0.35)] border border-indigo-400/30">
             <Shield className="h-8 w-8 text-white" />
           </div>
 
-          <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase text-indigo-300">
+          <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase text-indigo-400">
             <Lock className="h-3 w-3" />
             Institutional Administration Portal
           </span>
 
-          <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-white sm:text-3xl font-serif">
+          <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
             Eventify Central Control
           </h2>
-          <p className="mt-2 text-xs text-slate-400 max-w-sm">
+          <p className="mt-2 text-xs text-zinc-400 max-w-sm">
             Restricted access for designated university deans, provosts, and central system administrators.
           </p>
         </div>
 
         {/* Security Warning Box */}
-        <div className="mt-6 rounded-xl border border-indigo-900/60 bg-indigo-950/40 p-3.5 text-xs text-indigo-300">
+        <div className="mt-6 rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-3.5 text-xs text-indigo-300">
           <div className="flex items-start gap-2.5">
             <Server className="h-4 w-4 shrink-0 text-indigo-400 mt-0.5" />
             <p className="leading-relaxed text-[11px]">
@@ -107,21 +108,21 @@ export const AdminLoginPage: React.FC = () => {
 
         {/* Error Notification */}
         {errorMessage && (
-          <div className="mt-4 rounded-xl border border-rose-800/60 bg-rose-950/60 p-3.5 text-xs text-rose-300 flex items-start gap-2.5">
+          <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 flex items-start gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
             <p className="flex-1">{errorMessage}</p>
           </div>
         )}
 
         {/* Login Form Card */}
-        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/90 p-8 shadow-2xl backdrop-blur-xl">
+        <div className="mt-6 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-8 shadow-2xl backdrop-blur-xl">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-medium text-zinc-300">
                 Administrator Email / Official ID
               </label>
               <div className="mt-1.5 relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 <input
                   type="email"
                   required
@@ -129,14 +130,14 @@ export const AdminLoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@college.edu"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 pl-10 pr-3.5 text-xs text-white placeholder:text-slate-500 focus:border-indigo-500 focus:bg-slate-800 focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950/70 py-2.5 pl-10 pr-3.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label className="block text-xs font-medium text-zinc-300">
                   Master Password
                 </label>
                 <Link
@@ -147,19 +148,19 @@ export const AdminLoginPage: React.FC = () => {
                 </Link>
               </div>
               <div className="mt-1.5 relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 pl-10 pr-10 text-xs text-white placeholder:text-slate-500 focus:border-indigo-500 focus:bg-slate-800 focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950/70 py-2.5 pl-10 pr-10 text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -171,7 +172,7 @@ export const AdminLoginPage: React.FC = () => {
               variant="primary"
               size="lg"
               isLoading={isLoading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 text-sm shadow-lg shadow-indigo-600/30"
+              className="w-full py-3 text-sm"
               rightIcon={<ArrowRight className="h-4 w-4" />}
             >
               Verify Administrative Access
@@ -179,21 +180,21 @@ export const AdminLoginPage: React.FC = () => {
           </form>
 
           {/* Quick Fill Credentials for Reviewer Demo */}
-          <div className="mt-6 border-t border-slate-800 pt-5">
-            <div className="rounded-xl bg-slate-800/60 p-3 border border-slate-700/60">
+          <div className="mt-6 border-t border-zinc-800/80 pt-5">
+            <div className="rounded-xl bg-zinc-950/70 p-3 border border-zinc-800">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-300">
+                <span className="text-[11px] font-medium text-zinc-300">
                   Pre-configured Admin Seed:
                 </span>
                 <button
                   type="button"
                   onClick={handleQuickDemo}
-                  className="rounded-lg bg-indigo-600/40 px-2 py-1 text-[11px] font-bold text-indigo-300 hover:bg-indigo-600/60 cursor-pointer"
+                  className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-[11px] font-semibold text-indigo-400 hover:bg-indigo-500/20 cursor-pointer"
                 >
                   Auto Fill
                 </button>
               </div>
-              <p className="mt-1 font-mono text-[11px] text-slate-400">
+              <p className="mt-1 font-mono text-[11px] text-zinc-400">
                 admin@college.edu • Admin@12345
               </p>
             </div>
@@ -201,15 +202,15 @@ export const AdminLoginPage: React.FC = () => {
         </div>
 
         {/* Portal Switching links */}
-        <div className="mt-6 flex items-center justify-center gap-6 text-xs text-slate-400">
+        <div className="mt-6 flex items-center justify-center gap-6 text-xs text-zinc-400">
           <Link to="/student/login" className="hover:text-white transition-colors">
             Student Login →
           </Link>
-          <span className="text-slate-600">•</span>
+          <span className="text-zinc-700">•</span>
           <Link to="/organizer/login" className="hover:text-white transition-colors">
             Organizer Login →
           </Link>
-          <span className="text-slate-600">•</span>
+          <span className="text-zinc-700">•</span>
           <Link to="/" className="hover:text-white transition-colors">
             Return to Hub
           </Link>

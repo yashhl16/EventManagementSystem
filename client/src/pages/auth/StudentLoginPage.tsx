@@ -8,7 +8,6 @@ import {
   EyeOff,
   AlertCircle,
   ArrowRight,
-  Sparkles,
   Shield,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -66,39 +65,43 @@ export const StudentLoginPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-slate-50 py-12 sm:px-6 lg:px-8 dark:bg-slate-950 transition-colors">
-      <div className="absolute top-6 right-6">
+    <div className="relative flex min-h-screen flex-col justify-center bg-zinc-50 text-zinc-900 py-12 sm:px-6 lg:px-8 dark:bg-zinc-950 dark:text-zinc-100 transition-colors overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))]"
+      />
+      <div className="absolute top-6 right-6 z-10">
         <ThemeToggle />
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md px-4">
+      <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 shadow-xl shadow-indigo-200 dark:shadow-none">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-400/30 bg-indigo-600 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
             <GraduationCap className="h-7 w-7 text-white" />
           </div>
-          <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+          <h2 className="mt-4 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl">
             Student Sign In
           </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Sign in to discover events, register for hackathons, and access your digital ticket passes.
           </p>
         </div>
 
         {errorMessage && (
-          <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 flex items-start gap-2.5">
+          <div className="mt-6 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
             <p className="flex-1">{errorMessage}</p>
           </div>
         )}
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="mt-6 rounded-xl border border-zinc-200/80 bg-white p-8 dark:border-zinc-800/80 dark:bg-zinc-900/60 backdrop-blur-xl">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 College Email Address
               </label>
               <div className="mt-1.5 relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                 <input
                   type="email"
                   required
@@ -106,14 +109,14 @@ export const StudentLoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="student@college.edu"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2.5 pl-10 pr-3.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800/60 dark:text-white dark:focus:bg-slate-900"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-3.5 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950/70 dark:text-zinc-100 dark:placeholder:text-zinc-500"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   Password
                 </label>
                 <Link
@@ -124,19 +127,19 @@ export const StudentLoginPage: React.FC = () => {
                 </Link>
               </div>
               <div className="mt-1.5 relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2.5 pl-10 pr-10 text-xs text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-800/60 dark:text-white dark:focus:bg-slate-900"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-10 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950/70 dark:text-zinc-100 dark:placeholder:text-zinc-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -156,24 +159,24 @@ export const StudentLoginPage: React.FC = () => {
           </form>
 
           {/* Quick Demo Credentials */}
-          <div className="mt-6 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-xs dark:bg-slate-800/50">
-              <span className="text-slate-500 dark:text-slate-400">Demo Student:</span>
+          <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800/80">
+            <div className="flex items-center justify-between rounded-xl border border-zinc-200/80 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-950/60">
+              <span className="text-zinc-500 dark:text-zinc-400">Demo Student:</span>
               <button
                 type="button"
                 onClick={handleQuickDemo}
-                className="font-bold text-indigo-600 hover:underline dark:text-indigo-400"
+                className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400 cursor-pointer"
               >
                 Auto Fill (student@college.edu)
               </button>
             </div>
           </div>
 
-          <div className="mt-6 text-center text-xs text-slate-500">
+          <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
             Don't have a student account?{' '}
             <Link
               to="/student/register"
-              className="font-bold text-indigo-600 hover:underline dark:text-indigo-400"
+              className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
             >
               Register here
             </Link>
@@ -181,14 +184,14 @@ export const StudentLoginPage: React.FC = () => {
         </div>
 
         {/* Portal Links */}
-        <div className="mt-6 flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-          <Link to="/organizer/login" className="hover:text-indigo-600 dark:hover:text-white">
+        <div className="mt-6 flex items-center justify-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+          <Link to="/organizer/login" className="hover:text-indigo-600 dark:hover:text-white transition-colors">
             Organizer Portal →
           </Link>
           <span>•</span>
           <Link
             to="/admin/login"
-            className="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-white"
+            className="flex items-center gap-1 hover:text-indigo-600 dark:hover:text-white transition-colors"
           >
             <Shield className="h-3 w-3" />
             Administration Portal →

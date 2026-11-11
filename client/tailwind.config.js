@@ -1,3 +1,5 @@
+import colors from 'tailwindcss/colors';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -5,6 +7,8 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Align slate utilities with pure neutral zinc/obsidian across dashboards and modals
+        slate: colors.zinc,
         brand: {
           50: '#eef2ff',
           100: '#e0e7ff',
@@ -21,6 +25,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
     },
   },

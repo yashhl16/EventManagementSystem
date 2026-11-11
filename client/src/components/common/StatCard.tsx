@@ -21,28 +21,28 @@ export const StatCard: React.FC<StatCardProps> = ({
   color = 'indigo',
 }) => {
   const colorMap = {
-    indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900',
-    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900',
-    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border-amber-100 dark:border-amber-900',
-    rose: 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border-rose-100 dark:border-rose-900',
-    sky: 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 border-sky-100 dark:border-sky-900',
-    purple: 'bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 border-purple-100 dark:border-purple-900',
+    indigo: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+    sky: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+    purple: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-xl border border-zinc-200/80 bg-white p-5 transition-all duration-300 hover:border-indigo-500/40 dark:border-zinc-800/80 dark:bg-zinc-900/50 dark:hover:border-indigo-500/40">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
-        <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${colorMap[color]}`}>
+        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${colorMap[color]}`}>
           {icon}
         </div>
       </div>
       <div className="mt-3">
-        <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <h3 className="font-mono text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
           {value}
         </h3>
         {subtitle && (
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</p>
         )}
         {trend && (
           <div className="mt-2 flex items-center gap-1.5 text-xs">
@@ -53,7 +53,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             >
               {trend.isPositive ? '↑' : '↓'} {trend.value}
             </span>
-            <span className="text-slate-400">vs last month</span>
+            <span className="text-zinc-400 dark:text-zinc-500">vs last month</span>
           </div>
         )}
       </div>

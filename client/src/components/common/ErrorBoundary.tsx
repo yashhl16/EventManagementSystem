@@ -38,18 +38,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="min-h-[400px] flex items-center justify-center p-6">
-          <div className="max-w-md w-full rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-lg dark:border-rose-950 dark:bg-slate-900">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+          <div className="max-w-md w-full rounded-xl border border-rose-500/30 bg-white p-8 text-center shadow-lg dark:bg-zinc-900/70">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/10 text-rose-500">
               <AlertTriangle className="h-7 w-7" />
             </div>
-            <h3 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="mt-4 text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Something went wrong
             </h3>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
               An unexpected error occurred while rendering this section. Your data and account session are intact.
             </p>
             {this.state.error?.message && (
-              <div className="mt-4 overflow-x-auto rounded-lg bg-slate-50 p-2.5 text-left text-[11px] font-mono text-rose-600 dark:bg-slate-950 dark:text-rose-400 border border-slate-200 dark:border-slate-800">
+              <div className="mt-4 overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 text-left text-[11px] font-mono text-rose-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-rose-400">
                 {this.state.error.message}
               </div>
             )}
