@@ -170,6 +170,33 @@ npx vercel --prod
 
 ---
 
+## Automated Secondary Database Backup (Neon PostgreSQL)
+
+CampusPulse includes a GitHub Actions workflow at `.github/workflows/neon-db-backup.yml` that replicates the primary Neon PostgreSQL database (`DATABASE_URL`) into a dedicated secondary Neon backup project (`NEON_BACKUP_DATABASE_URL`) every day at `00:00 UTC` (with manual execution support via `workflow_dispatch`).
+
+### Pipeline Behavior
+
+- Runs `pg_dump --clean --if-exists --no-owner --no-privileges` against `DATABASE_URL` with SSL (`sslmode=require`).
+- Automatically installs a matching `postgresql-client` major version if the Neon database runs a newer PostgreSQL release than the Ubuntu runner default.
+- Streams schema, constraints, relations, data, and sequence states directly into `NEON_BACKUP_DATABASE_URL` inside a single atomic transaction (`psql --single-transaction -v ON_ERROR_STOP=1`).
+- Verifies that public tables, foreign key constraint counts, sequence values, and per-table row counts match between both Neon projects.
+
+### Setup Repository Secrets
+
+1. Create a **separate secondary Neon project** in the [Neon Console](https://console.neon.tech/) to store automated database backups.
+2. Copy its PostgreSQL connection string with SSL enabled (`?sslmode=require`; using a direct non-pooled Neon endpoint is recommended for `pg_dump`/`psql` operations).
+3. In your GitHub repository, navigate to **Settings -> Secrets and variables -> Actions -> New repository secret** and configure:
+   - `DATABASE_URL`: Primary production Neon PostgreSQL connection string (`postgres://...?sslmode=require`).
+   - `NEON_BACKUP_DATABASE_URL`: Secondary backup Neon PostgreSQL connection string (`postgres://...?sslmode=require`).
+
+### Manual Sync & Verification
+
+1. Open the **Actions** tab in GitHub and select **Neon Secondary Database Backup**.
+2. Click **Run workflow** to trigger an immediate replication run via `workflow_dispatch`.
+3. Inspect the workflow logs to confirm clean `pg_dump` / `psql` completion and matching table, foreign key, row count, and sequence verification output.
+
+---
+
 ## License
 
 CampusPulse is developed for higher education institutions and university campus councils.
