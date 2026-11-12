@@ -213,6 +213,8 @@ export const initSchema = async () => {
       `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "round_id" TEXT;`,
       `ALTER TABLE submissions ADD COLUMN IF NOT EXISTS round_id TEXT;`,
       `ALTER TABLE submissions ALTER COLUMN round_id DROP NOT NULL;`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_otp VARCHAR(6) DEFAULT NULL;`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_otp_expires TIMESTAMP DEFAULT NULL;`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS student_id VARCHAR(50) DEFAULT '';`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id VARCHAR(50) DEFAULT '';`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_id VARCHAR(50) DEFAULT '';`,

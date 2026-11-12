@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
   organization_name VARCHAR(150) DEFAULT '',
   is_active BOOLEAN DEFAULT true,
   last_login TIMESTAMPTZ DEFAULT NOW(),
+  reset_otp VARCHAR(6) DEFAULT NULL,
+  reset_otp_expires TIMESTAMP DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -9,6 +9,7 @@ import {
   validatePhone,
   validateText,
 } from '../utils/validation.js';
+import { sendWelcomeEmail, sendOtpEmail } from '../utils/email.js';
 
 // Helper to sign JWT token
 const signToken = (id, role) => {
@@ -101,6 +102,12 @@ export const registerStudent = async (req, res) => {
     );
 
     const user = mapUser(insertRes.rows[0]);
+
+    // Send automated welcome email non-blockingly so registration response is immediate
+    sendWelcomeEmail(emailCheck.value, nameCheck.value).catch((err) => {
+      console.warn('[AUTH Registration Welcome Email Notice]:', err.message);
+    });
+
     sendAuthResponse(user, 201, res, 'Student account registered successfully.');
   } catch (error) {
     if (error.code === '23505') {
@@ -187,6 +194,12 @@ export const registerOrganizer = async (req, res) => {
     );
 
     const user = mapUser(insertRes.rows[0]);
+
+    // Send automated welcome email non-blockingly so registration response is immediate
+    sendWelcomeEmail(emailCheck.value, nameCheck.value).catch((err) => {
+      console.warn('[AUTH Registration Welcome Email Notice]:', err.message);
+    });
+
     sendAuthResponse(user, 201, res, 'Organizer account registered successfully.');
   } catch (error) {
     if (error.code === '23505') {
@@ -635,28 +648,152 @@ export const changePassword = async (req, res) => {
 
 /**
  * Forgot Password
+ * Accepts { email }, generates a cryptographically secure 6-digit OTP,
+ * stores reset_otp and reset_otp_expires (10 mins) in the database,
+ * and sends an automated transactional email with generic enumeration protection.
  */
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const emailCheck = validateEmail(email);
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address.',
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const emailCheck = validateEmail(cleanEmail);
     if (!emailCheck.isValid) {
       return res.status(400).json({ success: false, message: emailCheck.message });
     }
 
-    const userRes = await query('SELECT name FROM users WHERE LOWER(email) = $1', [emailCheck.value]);
-    if (userRes.rows.length === 0) {
-      return res.status(404).json({
+    const userRes = await query(
+      'SELECT id, name, email FROM users WHERE LOWER(email) = $1',
+      [cleanEmail]
+    );
+
+    if (userRes.rows.length > 0) {
+      const user = userRes.rows[0];
+      // Generate cryptographically secure 6-digit OTP (100000 - 999999)
+      const otp = crypto.randomInt(100000, 1000000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+      await query(
+        'UPDATE users SET reset_otp = $1, reset_otp_expires = $2, updated_at = NOW() WHERE id = $3',
+        [otp, expiresAt, user.id]
+      );
+
+      // Non-blocking transactional email dispatch
+      sendOtpEmail(cleanEmail, otp).catch((emailErr) => {
+        console.error('[AUTH OTP Email Error]:', emailErr.message);
+      });
+    } else {
+      console.log(`[AUTH forgot-password] No user found for ${cleanEmail}. Returning generic message.`);
+    }
+
+    // Return generic success message to prevent user enumeration attacks
+    return res.status(200).json({
+      success: true,
+      message: 'If an account exists with this email address, a 6-digit verification code has been sent.',
+    });
+  } catch (error) {
+    console.error('Error in forgotPassword:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error processing password recovery request. Please try again.',
+    });
+  }
+};
+
+/**
+ * Reset Password
+ * Accepts { email, otp, newPassword }, verifies OTP validity and expiration (10m),
+ * hashes newPassword with bcrypt, updates user record, and clears reset_otp fields.
+ */
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
         success: false,
-        message: 'No registered student account found with this email address. Please register for an account.',
+        message: 'Email, 6-digit verification code, and new password are required.',
       });
     }
 
-    res.status(200).json({
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = String(otp).trim();
+
+    if (!/^\d{6}$/.test(cleanOtp)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code must be a 6-digit number.',
+      });
+    }
+
+    const pwdCheck = validatePassword(newPassword, true);
+    if (!pwdCheck.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: pwdCheck.message || 'Password must be at least 6 characters.',
+      });
+    }
+
+    const userRes = await query(
+      'SELECT id, name, email, reset_otp, reset_otp_expires FROM users WHERE LOWER(email) = $1',
+      [cleanEmail]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification code.',
+      });
+    }
+
+    const user = userRes.rows[0];
+
+    // Check if reset OTP was requested
+    if (!user.reset_otp || String(user.reset_otp).trim() !== cleanOtp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid verification code. Please check your code and try again.',
+      });
+    }
+
+    // Check expiration (10 minutes)
+    const now = new Date();
+    if (!user.reset_otp_expires || new Date(user.reset_otp_expires).getTime() <= now.getTime()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please request a new code.',
+      });
+    }
+
+    // Hash new password using project's bcrypt standard
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(pwdCheck.value, salt);
+
+    // Update password and clear reset_otp & reset_otp_expires to NULL
+    await query(
+      `UPDATE users
+       SET password_hash = $1, reset_otp = NULL, reset_otp_expires = NULL, updated_at = NOW()
+       WHERE id = $2`,
+      [passwordHash, user.id]
+    );
+
+    console.log(`[AUTH reset-password] Password successfully reset for user ${user.id} (${cleanEmail})`);
+
+    return res.status(200).json({
       success: true,
-      message: `Account found for ${userRes.rows[0].name}. In this campus demo environment, automated email dispatch is not enabled. Please sign in using the configured demo credentials (student@college.edu / Student@12345) or contact campus administration at admin@college.edu.`,
+      message: 'Password has been reset successfully. You can now sign in with your new password.',
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error processing password reset request.' });
+    console.error('Error in resetPassword:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error resetting password. Please try again.',
+    });
   }
 };

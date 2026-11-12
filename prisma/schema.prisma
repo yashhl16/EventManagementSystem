@@ -19,6 +19,8 @@ model User {
   avatar                  String?
   organizationName        String?
   designatingOfficeTitle  String?
+  resetOtp                String?             @map("reset_otp") @db.VarChar(6)
+  resetOtpExpires         DateTime?           @map("reset_otp_expires")
   createdAt               DateTime            @default(now())
   updatedAt               DateTime            @updatedAt
 

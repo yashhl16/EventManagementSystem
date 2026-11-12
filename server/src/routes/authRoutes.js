@@ -9,6 +9,7 @@ import {
   updateProfile,
   changePassword,
   forgotPassword,
+  resetPassword,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
@@ -25,7 +26,13 @@ router.post('/organizer/login', authLimiter, loginOrganizer);
 // Dedicated Admin Portal Endpoint (Strict Admin Only)
 router.post('/admin/login', authLimiter, loginAdmin);
 
+// Automated Transactional Email Password Recovery Endpoints
 router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/reset-password', authLimiter, resetPassword);
+
+// Universal Aliases for Seamless Client Support
+router.post('/register', authLimiter, registerStudent);
+router.post('/login', authLimiter, loginStudent);
 
 // Protected User Profile Endpoints
 router.get('/me', protect, getMe);
