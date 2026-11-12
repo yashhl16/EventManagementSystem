@@ -123,6 +123,22 @@ export const ensureDemoAccounts = async () => {
     }
   }
 
+  // 4. Configured System Email User (Ensure user exists for seamless email testing)
+  const emailUser = (process.env.EMAIL_USER || '').trim().toLowerCase();
+  if (emailUser && emailUser.includes('@') && emailUser !== 'your-email@gmail.com') {
+    const emailRes = await query('SELECT id, password_hash FROM users WHERE LOWER(email) = $1', [emailUser]);
+    if (emailRes.rows.length === 0) {
+      const emailUserId = crypto.randomUUID();
+      const defaultHash = await bcrypt.hash('JurisFlow@2026', salt);
+      await query(
+        `INSERT INTO users (id, name, email, password_hash, role, is_active)
+         VALUES ($1, $2, $3, $4, 'student', true)`,
+        [emailUserId, 'JurisFlow Member', emailUser, defaultHash]
+      );
+      console.log(`[Seed] System email user account created in database (${emailUser}).`);
+    }
+  }
+
   return { adminId, studentId, organizerId };
 };
 

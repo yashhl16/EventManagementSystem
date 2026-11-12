@@ -668,10 +668,33 @@ export const forgotPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: emailCheck.message });
     }
 
-    const userRes = await query(
+    let userRes = await query(
       'SELECT id, name, email FROM users WHERE LOWER(email) = $1',
       [cleanEmail]
     );
+
+    // In development mode or for the configured EMAIL_USER, auto-provision test user so forgot-password testing works seamlessly
+    if (
+      userRes.rows.length === 0 &&
+      (process.env.NODE_ENV === 'development' || cleanEmail === (process.env.EMAIL_USER || '').toLowerCase())
+    ) {
+      console.log(`[AUTH forgot-password] Auto-provisioning test account for ${cleanEmail} in development mode`);
+      const devId = crypto.randomUUID();
+      const salt = await bcrypt.genSalt(10);
+      const tempHash = await bcrypt.hash('Demo@12345', salt);
+      const namePart = cleanEmail.split('@')[0];
+      const displayName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+
+      const insertDev = await query(
+        `INSERT INTO users (id, name, email, password_hash, role, is_active)
+         VALUES ($1, $2, $3, $4, 'student', true)
+         RETURNING id, name, email`,
+        [devId, displayName, cleanEmail, tempHash]
+      );
+      if (insertDev.rows.length > 0) {
+        userRes = insertDev;
+      }
+    }
 
     if (userRes.rows.length > 0) {
       const user = userRes.rows[0];
@@ -684,7 +707,9 @@ export const forgotPassword = async (req, res) => {
         [otp, expiresAt, user.id]
       );
 
-      // Non-blocking transactional email dispatch
+      console.log(`[AUTH forgot-password] Generated 6-digit OTP [${otp}] for ${cleanEmail} (valid for 10 minutes)`);
+
+      // Transactional email dispatch
       sendOtpEmail(cleanEmail, otp).catch((emailErr) => {
         console.error('[AUTH OTP Email Error]:', emailErr.message);
       });
